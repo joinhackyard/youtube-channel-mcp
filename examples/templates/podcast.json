@@ -1,0 +1,12 @@
+{
+  "name": "podcast",
+  "description": "Weekly podcast episode: numbered titles, show footer, podcast playlist.",
+  "title_format": "{title} | My Podcast",
+  "description_footer": "Listen everywhere: https://example.com/podcast\nSubscribe for a new episode every week.",
+  "hashtags": ["#Podcast"],
+  "tags": ["podcast", "interview"],
+  "category_id": "22",
+  "made_for_kids": false,
+  "playlists": ["Podcast episodes"],
+  "guidance": "Lead the description with the guest's name and the one idea listeners will take away. Add chapters for episodes over 5 minutes."
+}

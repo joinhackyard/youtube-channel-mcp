@@ -1,0 +1,23 @@
+[
+  {
+    "name": "hackyard",
+    "description": "Standard Hackyard upload: brand footer with links, default tags, Science & Technology.",
+    "description_footer": "Hackyard is a private network of verified builders.\nFind your people. https://hackyard.org\n\nInstagram: https://www.instagram.com/the.hackyard/\nLinkedIn: https://www.linkedin.com/company/joinhackyard\nX: https://x.com/joinHackyard",
+    "hashtags": ["#Hackyard"],
+    "tags": ["Hackyard", "builders", "startups", "founders", "India tech"],
+    "category_id": "28",
+    "default_language": "en",
+    "default_audio_language": "en",
+    "made_for_kids": false,
+    "guidance": "Voice: premium, calm and specific. Show real builders and real work; no hype, no clickbait, no emoji strings. Never compare Hackyard to other products. Public calls to action say \"Find your people. hackyard.org\". Titles under 70 characters."
+  },
+  {
+    "name": "build2026",
+    "extends": "hackyard",
+    "description": "Hackyard Build 2026 content: \"| Hackyard Build 2026\" titles, event tags, Build 2026 playlist.",
+    "title_format": "{title} | Hackyard Build 2026",
+    "hashtags": ["#Build2026"],
+    "tags": ["Hackyard Build 2026", "Build 2026", "hackathon", "hackathon India", "Guwahati"],
+    "playlists": ["Hackyard Build 2026"]
+  }
+]

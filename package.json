@@ -1,0 +1,56 @@
+{
+  "name": "youtube-publisher-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for publishing to YouTube from Claude, Hermes, Cursor, Codex and any MCP client: resumable uploads, scheduling, thumbnails, playlists, captions and metadata, on the official YouTube Data API.",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "youtube",
+    "youtube-data-api",
+    "youtube-upload",
+    "claude",
+    "hermes",
+    "cursor",
+    "ai-agent"
+  ],
+  "license": "MIT",
+  "author": "Hackyard (https://hackyard.org)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shyamolkonwar/youtube-publisher-mcp.git"
+  },
+  "homepage": "https://github.com/shyamolkonwar/youtube-publisher-mcp#readme",
+  "bugs": "https://github.com/shyamolkonwar/youtube-publisher-mcp/issues",
+  "type": "module",
+  "bin": {
+    "youtube-publisher-mcp": "dist/src/cli.js"
+  },
+  "files": [
+    "dist/src",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test --test-force-exit --test-timeout=60000 --test-concurrency=1 \"dist/test/*.test.js\"",
+    "prepublishOnly": "npm test",
+    "start": "node dist/src/cli.js"
+  },
+  "dependencies": {
+    "@googleapis/youtube": "^40.0.2",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "google-auth-library": "^11.3.3",
+    "zod": "^4.3.6"
+  },
+  "optionalDependencies": {
+    "@napi-rs/keyring": "^2.1.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.0",
+    "typescript": "^5.9.3"
+  }
+}
