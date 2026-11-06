@@ -44,10 +44,7 @@ export function buildServer(app: App): McpServer {
         "Guided flow: transcript → metadata → upload → thumbnail/playlists → confirm visibility.",
       argsSchema: {
         file_path: z.string().describe("Path to the video on this computer"),
-        template: z
-          .string()
-          .optional()
-          .describe("Template name (see list_templates)"),
+        template: z.string().optional().describe("Template name (see list_templates)"),
         visibility: z
           .string()
           .optional()

@@ -3,11 +3,7 @@ import type { Config } from "./config.js";
 import { newId } from "./crypto.js";
 import type { Db } from "./db.js";
 import { YtError } from "./errors.js";
-import {
-  googleClient,
-  grantedScopes,
-  missingYoutubeScopes,
-} from "./google/oauth.js";
+import { googleClient, grantedScopes, missingYoutubeScopes } from "./google/oauth.js";
 import { YouTubeApi } from "./google/youtube.js";
 import { log } from "./log.js";
 import type { Quota } from "./quota.js";
@@ -62,56 +58,37 @@ export class Channels {
   }
 
   byRowId(rowId: string): ChannelRow | undefined {
-    return this.db.get<ChannelRow>(
-      "select * from channels where id = ?",
-      rowId,
-    );
+    return this.db.get<ChannelRow>("select * from channels where id = ?", rowId);
   }
 
   /** Resolve a channel by UC id, @handle or title; default channel when `ref` is empty. */
   resolve(ref?: string | null): ChannelRow {
     const all = this.list();
     if (!all.length) {
-      throw new YtError(
-        "not_connected",
-        "No YouTube channel is connected yet.",
-        { hint: "Call connect_channel and finish the Google sign-in." },
-      );
+      throw new YtError("not_connected", "No YouTube channel is connected yet.", {
+        hint: "Call connect_channel and finish the Google sign-in.",
+      });
     }
     let found: ChannelRow | undefined;
     if (ref) {
       const r = ref.trim().toLowerCase();
       found =
-        all.find(
-          (c) => c.channel_id.toLowerCase() === r || c.id.toLowerCase() === r,
-        ) ??
-        all.find(
-          (c) =>
-            (c.handle ?? "").toLowerCase() ===
-            (r.startsWith("@") ? r : `@${r}`),
-        ) ??
+        all.find((c) => c.channel_id.toLowerCase() === r || c.id.toLowerCase() === r) ??
+        all.find((c) => (c.handle ?? "").toLowerCase() === (r.startsWith("@") ? r : `@${r}`)) ??
         all.find((c) => (c.title ?? "").toLowerCase() === r) ??
         all.find((c) => (c.title ?? "").toLowerCase().includes(r));
       if (!found) {
-        throw new YtError(
-          "not_found",
-          `No connected channel matches "${ref}".`,
-          {
-            hint: `Connected: ${all.map((c) => `${c.title} (${c.channel_id})`).join(", ")}`,
-          },
-        );
+        throw new YtError("not_found", `No connected channel matches "${ref}".`, {
+          hint: `Connected: ${all.map((c) => `${c.title} (${c.channel_id})`).join(", ")}`,
+        });
       }
     } else {
       found = all.find((c) => c.is_default) ?? all[0];
     }
     if (found.status === "needs_reconnect") {
-      throw new YtError(
-        "auth_expired",
-        `The Google sign-in for "${found.title}" has expired.`,
-        {
-          hint: "Call connect_channel to sign in again. Uploads that were in progress resume automatically after reconnecting.",
-        },
-      );
+      throw new YtError("auth_expired", `The Google sign-in for "${found.title}" has expired.`, {
+        hint: "Call connect_channel to sign in again. Uploads that were in progress resume automatically after reconnecting.",
+      });
     }
     return found;
   }
@@ -122,22 +99,16 @@ export class Channels {
     const refresh = await this.vault.get(vaultKey(row.id));
     if (!refresh) {
       this.markNeedsReconnect(row.id, "No stored Google token");
-      throw new YtError(
-        "auth_expired",
-        `No stored Google token for "${row.title}".`,
-        { hint: "Call connect_channel to sign in again." },
-      );
+      throw new YtError("auth_expired", `No stored Google token for "${row.title}".`, {
+        hint: "Call connect_channel to sign in again.",
+      });
     }
     const client = googleClient(this.cfg);
     client.setCredentials({ refresh_token: refresh });
     client.on("tokens", (t) => {
       if (t.refresh_token && t.refresh_token !== refresh)
         void this.vault.set(vaultKey(row.id), t.refresh_token);
-      this.db.run(
-        "update channels set refreshed_at = ? where id = ?",
-        Date.now(),
-        row.id,
-      );
+      this.db.run("update channels set refreshed_at = ? where id = ?", Date.now(), row.id);
     });
     const api = new YouTubeApi(client, this.quota, (e) =>
       this.markNeedsReconnect(row.id, e.message),
@@ -157,42 +128,27 @@ export class Channels {
   }
 
   /** Store a freshly granted Google token: look up which channel it belongs to and upsert it. */
-  async saveFromTokens(
-    tokens: Credentials,
-    googleEmail: string | null,
-  ): Promise<ChannelRow> {
+  async saveFromTokens(tokens: Credentials, googleEmail: string | null): Promise<ChannelRow> {
     if (!tokens.refresh_token) {
-      throw new YtError(
-        "auth_expired",
-        "Google did not return a refresh token.",
-        {
-          hint: "Remove the app at https://myaccount.google.com/permissions and connect again.",
-        },
-      );
+      throw new YtError("auth_expired", "Google did not return a refresh token.", {
+        hint: "Remove the app at https://myaccount.google.com/permissions and connect again.",
+      });
     }
     const scopes = grantedScopes(tokens);
     const missing = missingYoutubeScopes(scopes);
     if (missing.length) {
-      throw new YtError(
-        "forbidden",
-        "Some YouTube permissions were not granted.",
-        {
-          hint: `Connect again and tick every box on the Google consent screen. Missing: ${missing.join(", ")}`,
-        },
-      );
+      throw new YtError("forbidden", "Some YouTube permissions were not granted.", {
+        hint: `Connect again and tick every box on the Google consent screen. Missing: ${missing.join(", ")}`,
+      });
     }
     const client = googleClient(this.cfg);
     client.setCredentials(tokens);
     const probe = new YouTubeApi(client, this.quota, () => undefined);
     const ch = await probe.myChannel();
     if (!ch?.id) {
-      throw new YtError(
-        "forbidden",
-        "This Google account has no YouTube channel.",
-        {
-          hint: "When Google asks you to choose an account, pick the channel (brand account) you manage.",
-        },
-      );
+      throw new YtError("forbidden", "This Google account has no YouTube channel.", {
+        hint: "When Google asks you to choose an account, pick the channel (brand account) you manage.",
+      });
     }
     const existing = this.db.get<ChannelRow>("select * from channels where channel_id = ?", ch.id);
     const rowId = existing?.id ?? newId();

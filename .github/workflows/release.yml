@@ -1,6 +1,6 @@
 # Publishes to npm when a version tag (v1.2.3) is pushed to joinhackyard/youtube-channel-mcp.
-# Uses npm trusted publishing (OIDC): no npm token is stored anywhere, and npm adds provenance automatically.
-# Release: bump "version" in package.json, commit, then `git tag v1.2.3 && git push --tags`.
+# npm trusted publishing (OIDC): no npm token exists anywhere, and npm adds provenance automatically.
+# Then creates the GitHub Release from the matching CHANGELOG.md section.
 name: Release
 on:
   push:
@@ -8,16 +8,18 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
   publish:
     if: github.repository == 'joinhackyard/youtube-channel-mcp'
     runs-on: ubuntu-latest
     environment: npm
+    permissions:
+      contents: write
+      id-token: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
@@ -33,4 +35,28 @@ jobs:
       - run: npm test
         env:
           YT_MCP_VAULT: file
-      - run: npm publish --access public
+      - name: Publish to npm (skipped if this version is already published)
+        run: |
+          name="$(node -p 'require("./package.json").name')"
+          version="$(node -p 'require("./package.json").version')"
+          if npm view "$name@$version" version >/dev/null 2>&1; then
+            echo "$name@$version is already on npm; skipping publish."
+          else
+            npm publish --access public
+          fi
+      - name: GitHub Release from CHANGELOG.md
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="$version" '
+            $0 ~ "^## \\[" v "\\]" { on=1; next }
+            on && /^## \[/ { exit }
+            on { print }
+          ' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then echo "See CHANGELOG.md" > notes.md; fi
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release edit "$GITHUB_REF_NAME" --notes-file notes.md
+          else
+            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag
+          fi

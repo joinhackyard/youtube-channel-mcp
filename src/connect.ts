@@ -40,8 +40,7 @@ body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0b0d1
 main{max-width:440px;padding:40px}h1{font-size:22px;font-weight:600;margin:0 0 8px}p{color:#a7b0c0;margin:0}
 </style></head><body><main><h1>${title}</h1><p>${body}</p></main></body></html>`;
 
-const escapeHtml = (s: string) =>
-  s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 interface Pending {
   url: string;
@@ -100,11 +99,9 @@ export class Connector {
       const timer = setTimeout(() => {
         server.close();
         reject(
-          new YtError(
-            "cancelled",
-            "Google sign-in timed out after 10 minutes.",
-            { hint: "Run connect_channel again." },
-          ),
+          new YtError("cancelled", "Google sign-in timed out after 10 minutes.", {
+            hint: "Run connect_channel again.",
+          }),
         );
       }, 10 * 60_000);
       timer.unref();
@@ -123,41 +120,32 @@ export class Connector {
           server.close();
         };
         if (handled) {
-          res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" }).end(page("Already handled", "You can close this tab."));
+          res
+            .writeHead(200, { "Content-Type": "text/html; charset=utf-8" })
+            .end(page("Already handled", "You can close this tab."));
           return;
         }
         if (u.searchParams.get("state") !== state) {
           res
             .writeHead(400, { "Content-Type": "text/html; charset=utf-8" })
-            .end(
-              page("Sign-in link mismatch", "Start again from your AI app."),
-            );
+            .end(page("Sign-in link mismatch", "Start again from your AI app."));
           return;
         }
         handled = true; // a browser retry of the same callback must not race the first one
         const err = u.searchParams.get("error");
         if (err) {
           finish(400, "Sign-in cancelled", escapeHtml(err));
-          reject(
-            new YtError("cancelled", `Google sign-in was cancelled (${err}).`),
-          );
+          reject(new YtError("cancelled", `Google sign-in was cancelled (${err}).`));
           return;
         }
         try {
-          const tokens = await exchangeCode(
-            client,
-            u.searchParams.get("code") ?? "",
-            verifier,
-          );
+          const tokens = await exchangeCode(client, u.searchParams.get("code") ?? "", verifier);
           const who = await identityFromIdToken(
             client,
             tokens.id_token,
             this.cfg.google.clientId!,
           ).catch(() => null);
-          const row = await this.channels.saveFromTokens(
-            tokens,
-            who?.email ?? null,
-          );
+          const row = await this.channels.saveFromTokens(tokens, who?.email ?? null);
           finish(
             200,
             `Connected ${escapeHtml(row.title ?? "your channel")}`,
@@ -166,13 +154,8 @@ export class Connector {
           this.onConnected(row);
           resolve(row);
         } catch (e) {
-          const y =
-            e instanceof YtError ? e : new YtError("unknown", String(e));
-          finish(
-            400,
-            "Could not connect",
-            escapeHtml(`${y.message} ${y.hint ?? ""}`),
-          );
+          const y = e instanceof YtError ? e : new YtError("unknown", String(e));
+          finish(400, "Could not connect", escapeHtml(`${y.message} ${y.hint ?? ""}`));
           reject(y);
         }
       });

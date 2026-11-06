@@ -84,14 +84,11 @@ export class Db {
   }
 
   private migrate() {
-    this.raw.exec(
-      "create table if not exists schema_version(version integer not null)",
-    );
+    this.raw.exec("create table if not exists schema_version(version integer not null)");
     const row = this.raw.prepare("select version from schema_version").get() as
       { version: number } | undefined;
     let v = row?.version ?? 0;
-    if (!row)
-      this.raw.prepare("insert into schema_version(version) values (0)").run();
+    if (!row) this.raw.prepare("insert into schema_version(version) values (0)").run();
     for (; v < MIGRATIONS.length; v++) {
       this.tx(() => {
         this.raw.exec(MIGRATIONS[v]);
@@ -126,10 +123,7 @@ export class Db {
   }
 
   setting(key: string): string | undefined {
-    return this.get<{ value: string }>(
-      "select value from settings where key = ?",
-      key,
-    )?.value;
+    return this.get<{ value: string }>("select value from settings where key = ?", key)?.value;
   }
 
   setSetting(key: string, value: string) {
@@ -140,7 +134,12 @@ export class Db {
     );
   }
 
-  audit(action: string, detail: Record<string, unknown> = {}, channelId?: string, videoId?: string) {
+  audit(
+    action: string,
+    detail: Record<string, unknown> = {},
+    channelId?: string,
+    videoId?: string,
+  ) {
     this.run(
       "insert into audit(at, action, channel_id, video_id, detail) values (?, ?, ?, ?, ?)",
       Date.now(),

@@ -7,29 +7,12 @@ import { checkChapters } from "../../ai/brief.js";
 import { YtError } from "../../errors.js";
 import { PRIVACY, summariseVideo } from "../../google/youtube.js";
 import { applyTemplate } from "../../templates.js";
-import {
-  describeJob,
-  privateLockWarning,
-  type UploadMetadata,
-} from "../../upload/jobs.js";
-import {
-  expandPath,
-  inspectThumbnail,
-  inspectVideoFile,
-} from "../../upload/sources.js";
-import {
-  channelArg,
-  confirmArg,
-  confirmGate,
-  ok,
-  progressReporter,
-  safe,
-} from "../helpers.js";
+import { describeJob, privateLockWarning, type UploadMetadata } from "../../upload/jobs.js";
+import { expandPath, inspectThumbnail, inspectVideoFile } from "../../upload/sources.js";
+import { channelArg, confirmArg, confirmGate, ok, progressReporter, safe } from "../helpers.js";
 
 const fmtBytes = (n: number) =>
-  n > 1024 ** 3
-    ? `${(n / 1024 ** 3).toFixed(2)} GB`
-    : `${(n / 1024 ** 2).toFixed(1)} MB`;
+  n > 1024 ** 3 ? `${(n / 1024 ** 3).toFixed(2)} GB` : `${(n / 1024 ** 2).toFixed(1)} MB`;
 
 export const metadataShape = {
   title: z
@@ -41,33 +24,20 @@ export const metadataShape = {
     .string()
     .max(5000)
     .optional()
-    .describe(
-      "Description. Template header/footer/hashtags are added automatically.",
-    ),
-  tags: z
-    .array(z.string())
-    .optional()
-    .describe("Tags (total under 500 characters)."),
+    .describe("Description. Template header/footer/hashtags are added automatically."),
+  tags: z.array(z.string()).optional().describe("Tags (total under 500 characters)."),
   category_id: z
     .string()
     .optional()
     .describe(
       "YouTube category id, e.g. 22 People & Blogs, 27 Education, 28 Science & Technology. See list_categories.",
     ),
-  default_language: z
-    .string()
-    .optional()
-    .describe('Language of title/description, e.g. "en".'),
-  default_audio_language: z
-    .string()
-    .optional()
-    .describe('Spoken language, e.g. "en", "hi".'),
+  default_language: z.string().optional().describe('Language of title/description, e.g. "en".'),
+  default_audio_language: z.string().optional().describe('Spoken language, e.g. "en", "hi".'),
   made_for_kids: z
     .boolean()
     .optional()
-    .describe(
-      "COPPA: is this video made for kids? Defaults to false (or the template value).",
-    ),
+    .describe("COPPA: is this video made for kids? Defaults to false (or the template value)."),
   contains_synthetic_media: z
     .boolean()
     .optional()
@@ -113,16 +83,12 @@ export function registerUploadTools(server: McpServer, app: App) {
         file_path: z
           .string()
           .optional()
-          .describe(
-            "Absolute path to the video on this computer, e.g. ~/Videos/recap.mp4.",
-          ),
+          .describe("Absolute path to the video on this computer, e.g. ~/Videos/recap.mp4."),
         url: z
           .string()
           .url()
           .optional()
-          .describe(
-            "Public http(s) URL to download the video from instead of a file.",
-          ),
+          .describe("Public http(s) URL to download the video from instead of a file."),
         ...metadataShape,
         privacy: z
           .enum(PRIVACY)
@@ -135,16 +101,11 @@ export function registerUploadTools(server: McpServer, app: App) {
             "Schedule: ISO 8601 date-time when the video goes public. Uploads as private until then.",
           ),
         notify_subscribers: z.boolean().default(true),
-        recording_date: z
-          .string()
-          .optional()
-          .describe("ISO date the video was recorded."),
+        recording_date: z.string().optional().describe("ISO date the video was recorded."),
         thumbnail_path: z
           .string()
           .optional()
-          .describe(
-            "JPG/PNG up to 2 MB to set as the custom thumbnail after upload.",
-          ),
+          .describe("JPG/PNG up to 2 MB to set as the custom thumbnail after upload."),
         playlists: z
           .array(z.string())
           .optional()
@@ -152,19 +113,12 @@ export function registerUploadTools(server: McpServer, app: App) {
         create_missing_playlists: z
           .boolean()
           .default(true)
-          .describe(
-            "Create (private) playlists named in `playlists` that do not exist yet.",
-          ),
-        captions_path: z
-          .string()
-          .optional()
-          .describe(".srt or .vtt captions file to attach."),
+          .describe("Create (private) playlists named in `playlists` that do not exist yet."),
+        captions_path: z.string().optional().describe(".srt or .vtt captions file to attach."),
         captions_language: z
           .string()
           .optional()
-          .describe(
-            'Captions language, e.g. "en". Defaults to default_audio_language or "en".',
-          ),
+          .describe('Captions language, e.g. "en". Defaults to default_audio_language or "en".'),
         channel: channelArg,
         wait_seconds: z
           .number()
@@ -172,9 +126,7 @@ export function registerUploadTools(server: McpServer, app: App) {
           .min(0)
           .max(110)
           .default(20)
-          .describe(
-            "Wait this long for the upload before returning the job status.",
-          ),
+          .describe("Wait this long for the upload before returning the job status."),
         confirmation_token: confirmArg,
       },
       annotations: {
@@ -186,14 +138,9 @@ export function registerUploadTools(server: McpServer, app: App) {
     },
     safe(async (args, extra) => {
       if (!args.file_path === !args.url)
-        throw new YtError(
-          "invalid_request",
-          "Provide exactly one of file_path or url.",
-        );
+        throw new YtError("invalid_request", "Provide exactly one of file_path or url.");
       const row = app.channels.resolve(args.channel);
-      const template = args.template
-        ? app.templates.get(args.template)
-        : undefined;
+      const template = args.template ? app.templates.get(args.template) : undefined;
       const meta = applyTemplate(args, template);
       const publishAt = publishAtCheck(args.publish_at);
       const warnings = [...meta.warnings, ...checkChapters(meta.description)];
@@ -203,7 +150,10 @@ export function registerUploadTools(server: McpServer, app: App) {
         : undefined;
       if (args.thumbnail_path) await inspectThumbnail(args.thumbnail_path);
       if (args.captions_path && !existsSync(expandPath(args.captions_path))) {
-        throw new YtError("file_error", `Captions file not found: ${expandPath(args.captions_path)}`);
+        throw new YtError(
+          "file_error",
+          `Captions file not found: ${expandPath(args.captions_path)}`,
+        );
       }
       app.quota.assertAvailable("uploads");
 
@@ -231,30 +181,21 @@ export function registerUploadTools(server: McpServer, app: App) {
         };
       const requested = publishAt ? "public" : args.privacy;
 
-      const playlists = [
-        ...new Set([...(args.playlists ?? []), ...meta.playlists]),
-      ];
+      const playlists = [...new Set([...(args.playlists ?? []), ...meta.playlists])];
       const summary = [
         `Upload to YouTube channel "${row.title}" as ${publishAt ? `SCHEDULED, going public at ${publishAt}` : requested.toUpperCase()}:`,
         `Title: ${meta.title}`,
         `Source: ${file ? `${file.path} (${fmtBytes(file.size)})` : args.url}`,
         meta.template ? `Template: ${meta.template}` : "",
         playlists.length ? `Playlists: ${playlists.join(", ")}` : "",
-        args.thumbnail_path
-          ? `Thumbnail: ${expandPath(args.thumbnail_path)}`
-          : "",
+        args.thumbnail_path ? `Thumbnail: ${expandPath(args.thumbnail_path)}` : "",
         `Made for kids: ${meta.made_for_kids ? "yes" : "no"}${args.notify_subscribers === false ? " · subscribers not notified" : ""}`,
       ]
         .filter(Boolean)
         .join("\n");
-      const gate = await confirmGate(
-        app,
-        server,
-        "upload_video",
-        args,
-        summary,
-        { publicFacing: requested !== "private" },
-      );
+      const gate = await confirmGate(app, server, "upload_video", args, summary, {
+        publicFacing: requested !== "private",
+      });
       if (gate) return gate;
 
       const metadata: UploadMetadata = {
@@ -278,16 +219,13 @@ export function registerUploadTools(server: McpServer, app: App) {
           : { kind: "url", url: args.url! },
         metadata,
         post: {
-          thumbnail_path: args.thumbnail_path
-            ? expandPath(args.thumbnail_path)
-            : undefined,
+          thumbnail_path: args.thumbnail_path ? expandPath(args.thumbnail_path) : undefined,
           playlists,
           create_missing_playlists: args.create_missing_playlists,
           captions: args.captions_path
             ? {
                 file_path: expandPath(args.captions_path),
-                language:
-                  args.captions_language ?? meta.default_audio_language ?? "en",
+                language: args.captions_language ?? meta.default_audio_language ?? "en",
               }
             : undefined,
         },
@@ -333,23 +271,20 @@ export function registerUploadTools(server: McpServer, app: App) {
         throw new YtError("invalid_request", "Provide job_id or video_id.");
       const jobId =
         args.job_id ??
-        app.db.get<{ id: string }>("select id from jobs where video_id = ? order by created_at desc limit 1", args.video_id!)?.id;
+        app.db.get<{ id: string }>(
+          "select id from jobs where video_id = ? order by created_at desc limit 1",
+          args.video_id!,
+        )?.id;
       let job = jobId ? app.jobs.get(jobId) : undefined;
-      if (args.job_id && !job)
-        throw new YtError("not_found", `No upload job ${args.job_id}.`);
+      if (args.job_id && !job) throw new YtError("not_found", `No upload job ${args.job_id}.`);
       if (job && args.wait_seconds)
-        job = await app.jobs.waitFor(
-          job.id,
-          args.wait_seconds * 1000,
-          progressReporter(extra),
-        );
+        job = await app.jobs.waitFor(job.id, args.wait_seconds * 1000, progressReporter(extra));
       const out: Record<string, unknown> = {};
       if (job) out.job = describeJob(job);
       const videoId = args.video_id ?? job?.video_id;
       if (videoId) {
         const row = job
-          ? (app.channels.byRowId(job.channel_row_id) ??
-            app.channels.resolve(args.channel))
+          ? (app.channels.byRowId(job.channel_row_id) ?? app.channels.resolve(args.channel))
           : app.channels.resolve(args.channel);
         const api = await app.channels.api(row);
         const v = await api.getVideo(videoId, [
@@ -360,10 +295,7 @@ export function registerUploadTools(server: McpServer, app: App) {
         ]);
         out.video = summariseVideo(v);
         if (job) {
-          const lock = privateLockWarning(
-            JSON.parse(job.metadata) as UploadMetadata,
-            v,
-          );
+          const lock = privateLockWarning(JSON.parse(job.metadata) as UploadMetadata, v);
           if (lock) out.warning = lock;
         }
         const p = v.processingDetails?.processingStatus;
@@ -450,13 +382,7 @@ export function registerUploadTools(server: McpServer, app: App) {
     safe(async ({ job_id, wait_seconds }, extra) => {
       app.jobs.resume(job_id);
       return ok(
-        describeJob(
-          await app.jobs.waitFor(
-            job_id,
-            wait_seconds * 1000,
-            progressReporter(extra),
-          ),
-        ),
+        describeJob(await app.jobs.waitFor(job_id, wait_seconds * 1000, progressReporter(extra))),
       );
     }),
   );

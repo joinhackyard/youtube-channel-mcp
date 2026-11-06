@@ -11,9 +11,7 @@ import { COST } from "../../quota.js";
 import { expandPath, readHead } from "../../upload/sources.js";
 import { channelArg, confirmArg, confirmGate, ok, safe } from "../helpers.js";
 
-async function fullChannel(
-  api: YouTubeApi,
-): Promise<youtube_v3.Schema$Channel> {
+async function fullChannel(api: YouTubeApi): Promise<youtube_v3.Schema$Channel> {
   const data = await api.call(COST.list, "channels.list", () =>
     api.yt.channels.list({
       part: [
@@ -63,9 +61,7 @@ const shortComment = (c?: youtube_v3.Schema$Comment) =>
         likes: c.snippet?.likeCount,
         published_at: c.snippet?.publishedAt,
         updated_at:
-          c.snippet?.updatedAt !== c.snippet?.publishedAt
-            ? c.snippet?.updatedAt
-            : undefined,
+          c.snippet?.updatedAt !== c.snippet?.publishedAt ? c.snippet?.updatedAt : undefined,
         moderation_status: c.snippet?.moderationStatus ?? undefined,
       }
     : undefined;
@@ -78,8 +74,7 @@ const REPORTS = {
       "views,estimatedMinutesWatched,averageViewDuration,averageViewPercentage,subscribersGained,subscribersLost,likes,comments,shares",
   },
   daily: {
-    metrics:
-      "views,estimatedMinutesWatched,averageViewDuration,subscribersGained,subscribersLost",
+    metrics: "views,estimatedMinutesWatched,averageViewDuration,subscribersGained,subscribersLost",
     dimensions: "day",
     sort: "day",
   },
@@ -131,10 +126,7 @@ const REPORTS = {
 
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 
-export async function queryAnalytics(
-  api: YouTubeApi,
-  params: Record<string, string | number>,
-) {
+export async function queryAnalytics(api: YouTubeApi, params: Record<string, string | number>) {
   try {
     const res = await api.auth.request<{
       columnHeaders?: { name: string }[];
@@ -144,27 +136,20 @@ export async function queryAnalytics(
       params: { ids: "channel==MINE", ...params },
     });
     const cols = (res.data.columnHeaders ?? []).map((c) => c.name);
-    return (res.data.rows ?? []).map((r) =>
-      Object.fromEntries(cols.map((c, i) => [c, r[i]])),
-    );
+    return (res.data.rows ?? []).map((r) => Object.fromEntries(cols.map((c, i) => [c, r[i]])));
   } catch (err) {
     const e = classifyGoogleError(err, "YouTube Analytics");
     if (e.code === "forbidden" || e.opts.status === 403) {
-      throw new YtError(
-        "forbidden",
-        `YouTube Analytics refused the request: ${e.message}`,
-        {
-          hint: 'Make sure the "YouTube Analytics API" is enabled in your Google Cloud project (https://console.cloud.google.com/apis/library/youtubeanalytics.googleapis.com), then run connect_channel again so the analytics permission is granted.',
-        },
-      );
+      throw new YtError("forbidden", `YouTube Analytics refused the request: ${e.message}`, {
+        hint: 'Make sure the "YouTube Analytics API" is enabled in your Google Cloud project (https://console.cloud.google.com/apis/library/youtubeanalytics.googleapis.com), then run connect_channel again so the analytics permission is granted.',
+      });
     }
     throw e;
   }
 }
 
 export function registerChannelTools(server: McpServer, app: App) {
-  const api = async (channel?: string) =>
-    app.channels.api(app.channels.resolve(channel));
+  const api = async (channel?: string) => app.channels.api(app.channels.resolve(channel));
 
   // ---- channel profile & branding ----------------------------------------------------------------
   server.registerTool(
@@ -198,9 +183,7 @@ export function registerChannelTools(server: McpServer, app: App) {
         views: ch.statistics?.viewCount,
         videos: ch.statistics?.videoCount,
         banner: ch.brandingSettings?.image?.bannerExternalUrl,
-        avatar:
-          ch.snippet?.thumbnails?.high?.url ??
-          ch.snippet?.thumbnails?.default?.url,
+        avatar: ch.snippet?.thumbnails?.high?.url ?? ch.snippet?.thumbnails?.default?.url,
         made_for_kids: ch.status?.madeForKids,
         long_uploads: ch.status?.longUploadsStatus,
         privacy: ch.status?.privacyStatus,
@@ -225,11 +208,7 @@ export function registerChannelTools(server: McpServer, app: App) {
           .describe(
             'Space-separated; wrap multi-word keywords in quotes, e.g. hackathon "startup India".',
           ),
-        country: z
-          .string()
-          .length(2)
-          .optional()
-          .describe("ISO country code, e.g. IN, US."),
+        country: z.string().length(2).optional().describe("ISO country code, e.g. IN, US."),
         default_language: z.string().optional().describe('e.g. "en".'),
         unsubscribed_trailer: z
           .string()
@@ -268,8 +247,7 @@ export function registerChannelTools(server: McpServer, app: App) {
         "unsubscribed_trailer",
         "localizations",
       ].filter((k) => args[k as keyof typeof args] !== undefined);
-      if (!fields.length)
-        throw new YtError("invalid_request", "Nothing to change.");
+      if (!fields.length) throw new YtError("invalid_request", "Nothing to change.");
       const gate = await confirmGate(
         app,
         server,
@@ -290,8 +268,7 @@ export function registerChannelTools(server: McpServer, app: App) {
             keywords: args.keywords ?? cur.keywords,
             country: args.country ?? cur.country,
             defaultLanguage: args.default_language ?? cur.defaultLanguage,
-            unsubscribedTrailer:
-              args.unsubscribed_trailer ?? cur.unsubscribedTrailer,
+            unsubscribedTrailer: args.unsubscribed_trailer ?? cur.unsubscribedTrailer,
             defaultTab: cur.defaultTab,
             moderateComments: cur.moderateComments,
             showRelatedChannels: cur.showRelatedChannels,
@@ -366,11 +343,7 @@ export function registerChannelTools(server: McpServer, app: App) {
           }),
         false,
       );
-      if (!banner.url)
-        throw new YtError(
-          "server_error",
-          "YouTube did not return a banner URL.",
-        );
+      if (!banner.url) throw new YtError("server_error", "YouTube did not return a banner URL.");
       await a.call(
         COST.channelsUpdate,
         "channels.update",
@@ -411,9 +384,7 @@ export function registerChannelTools(server: McpServer, app: App) {
         show: z
           .enum(["entire_video", "end", "custom"])
           .default("entire_video")
-          .describe(
-            "entire_video, the last 15 seconds (end), or from offset_seconds (custom).",
-          ),
+          .describe("entire_video, the last 15 seconds (end), or from offset_seconds (custom)."),
         offset_seconds: z.number().int().min(0).optional(),
         channel: channelArg,
         confirmation_token: confirmArg,
@@ -432,7 +403,9 @@ export function registerChannelTools(server: McpServer, app: App) {
         server,
         "set_watermark",
         args,
-        args.remove ? `Remove the watermark from all videos on "${row.title}".` : `Show ${args.image_path} as a watermark on all videos of "${row.title}" (${args.show}).`,
+        args.remove
+          ? `Remove the watermark from all videos on "${row.title}".`
+          : `Show ${args.image_path} as a watermark on all videos of "${row.title}" (${args.show}).`,
         { publicFacing: true },
       );
       if (gate) return gate;
@@ -447,20 +420,14 @@ export function registerChannelTools(server: McpServer, app: App) {
         return ok({ removed: true });
       }
       if (!args.image_path)
-        throw new YtError(
-          "invalid_request",
-          "Pass image_path, or remove: true.",
-        );
+        throw new YtError("invalid_request", "Pass image_path, or remove: true.");
       const img = await imageFile(args.image_path, 1024 * 1024);
       const timing: youtube_v3.Schema$InvideoTiming =
         args.show === "end"
           ? { type: "offsetFromEnd", offsetMs: "15000" }
           : {
               type: "offsetFromStart",
-              offsetMs: String(
-                (args.show === "custom" ? (args.offset_seconds ?? 0) : 0) *
-                  1000,
-              ),
+              offsetMs: String((args.show === "custom" ? (args.offset_seconds ?? 0) : 0) * 1000),
             };
       await a.call(
         COST.watermarks,
@@ -485,13 +452,8 @@ export function registerChannelTools(server: McpServer, app: App) {
       description:
         "Comment threads on one video, or across the whole channel (newest first). Filter by moderation state (published, held_for_review, likely_spam) or search text. Includes replies.",
       inputSchema: {
-        video_id: z
-          .string()
-          .optional()
-          .describe("Omit for comments across all channel videos."),
-        status: z
-          .enum(["published", "held_for_review", "likely_spam"])
-          .default("published"),
+        video_id: z.string().optional().describe("Omit for comments across all channel videos."),
+        status: z.enum(["published", "held_for_review", "likely_spam"]).default("published"),
         search: z.string().optional(),
         order: z.enum(["time", "relevance"]).default("time"),
         max_results: z.number().int().min(1).max(100).default(30),
@@ -586,11 +548,7 @@ export function registerChannelTools(server: McpServer, app: App) {
             }),
           false,
         );
-        app.db.audit(
-          "comment.reply",
-          { parent: args.comment_id },
-          row.channel_id,
-        );
+        app.db.audit("comment.reply", { parent: args.comment_id }, row.channel_id);
         return ok({ posted: shortComment(c) });
       }
       const t = await a.call(
@@ -628,9 +586,7 @@ export function registerChannelTools(server: McpServer, app: App) {
         ban_author: z
           .boolean()
           .default(false)
-          .describe(
-            "Only with remove: also hide this person’s future comments.",
-          ),
+          .describe("Only with remove: also hide this person’s future comments."),
         channel: channelArg,
         confirmation_token: confirmArg,
       },
@@ -643,10 +599,7 @@ export function registerChannelTools(server: McpServer, app: App) {
     },
     safe(async (args) => {
       if (args.ban_author && args.action !== "remove")
-        throw new YtError(
-          "invalid_request",
-          "ban_author only works with action: remove.",
-        );
+        throw new YtError("invalid_request", "ban_author only works with action: remove.");
       const destructive = args.action === "remove";
       const gate = await confirmGate(
         app,
@@ -754,29 +707,15 @@ export function registerChannelTools(server: McpServer, app: App) {
             "custom",
           ])
           .default("overview"),
-        video_id: z
-          .string()
-          .optional()
-          .describe("Limit the report to one video."),
-        start_date: z
-          .string()
-          .optional()
-          .describe("YYYY-MM-DD; default 28 days before end_date."),
+        video_id: z.string().optional().describe("Limit the report to one video."),
+        start_date: z.string().optional().describe("YYYY-MM-DD; default 28 days before end_date."),
         end_date: z.string().optional().describe("YYYY-MM-DD; default today."),
         metrics: z
           .string()
           .optional()
-          .describe(
-            "custom only: comma-separated metrics, e.g. views,likes,cardClickRate.",
-          ),
-        dimensions: z
-          .string()
-          .optional()
-          .describe("custom only: e.g. day,country."),
-        filters: z
-          .string()
-          .optional()
-          .describe("custom only: e.g. country==IN;video==abc."),
+          .describe("custom only: comma-separated metrics, e.g. views,likes,cardClickRate."),
+        dimensions: z.string().optional().describe("custom only: e.g. day,country."),
+        filters: z.string().optional().describe("custom only: e.g. country==IN;video==abc."),
         sort: z.string().optional(),
         max_results: z.number().int().min(1).max(200).optional(),
         channel: channelArg,
@@ -796,8 +735,7 @@ export function registerChannelTools(server: McpServer, app: App) {
       }
       const a = await app.channels.api(row);
       const end = args.end_date ?? isoDay(new Date());
-      const start =
-        args.start_date ?? isoDay(new Date(Date.parse(end) - 28 * 86_400_000));
+      const start = args.start_date ?? isoDay(new Date(Date.parse(end) - 28 * 86_400_000));
       let spec: {
         metrics: string;
         dimensions?: string;
@@ -806,8 +744,7 @@ export function registerChannelTools(server: McpServer, app: App) {
         maxResults?: number;
       };
       if (args.report === "custom") {
-        if (!args.metrics)
-          throw new YtError("invalid_request", "custom reports need metrics.");
+        if (!args.metrics) throw new YtError("invalid_request", "custom reports need metrics.");
         spec = {
           metrics: args.metrics,
           dimensions: args.dimensions,
@@ -821,19 +758,11 @@ export function registerChannelTools(server: McpServer, app: App) {
         if (args.max_results) spec.maxResults = args.max_results;
       }
       if (args.report === "retention" && !args.video_id)
-        throw new YtError(
-          "invalid_request",
-          "The retention report needs video_id.",
-        );
+        throw new YtError("invalid_request", "The retention report needs video_id.");
       if (args.video_id) {
         if (args.report === "top_videos")
-          throw new YtError(
-            "invalid_request",
-            "top_videos is channel-wide; omit video_id.",
-          );
-        spec.filters = [spec.filters, `video==${args.video_id}`]
-          .filter(Boolean)
-          .join(";");
+          throw new YtError("invalid_request", "top_videos is channel-wide; omit video_id.");
+        spec.filters = [spec.filters, `video==${args.video_id}`].filter(Boolean).join(";");
       }
       const params: Record<string, string | number> = {
         startDate: start,
@@ -864,9 +793,7 @@ export function registerChannelTools(server: McpServer, app: App) {
         start_date: start,
         end_date: end,
         rows,
-        note: rows.length
-          ? undefined
-          : "No data for this range yet (analytics lag about 2 days).",
+        note: rows.length ? undefined : "No data for this range yet (analytics lag about 2 days).",
       });
     }),
   );

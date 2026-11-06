@@ -1,5 +1,11 @@
 # YouTube Channel MCP
 
+[![npm](https://img.shields.io/npm/v/@joinhackyard/youtube-channel-mcp?color=2b5ce4)](https://www.npmjs.com/package/@joinhackyard/youtube-channel-mcp)
+[![CI](https://github.com/joinhackyard/youtube-channel-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/joinhackyard/youtube-channel-mcp/actions/workflows/ci.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/joinhackyard/youtube-channel-mcp/badge)](https://scorecard.dev/viewer/?uri=github.com/joinhackyard/youtube-channel-mcp)
+[![License: MIT](https://img.shields.io/badge/license-MIT-2b5ce4)](LICENSE)
+[![Node](https://img.shields.io/node/v/@joinhackyard/youtube-channel-mcp?color=2b5ce4)](https://nodejs.org)
+
 Run your whole YouTube channel from Claude, Hermes, Cursor, Codex, Windsurf or any MCP client. Upload and schedule videos, write titles and chapters from the transcript, fix metadata across the back catalogue, answer and moderate comments, refresh the channel profile and banner, organise playlists and captions, and ask how the channel is doing.
 
 > “Upload `~/Videos/ep12.mp4` with chapters from the transcript, add it to the Podcast playlist and schedule it for Friday 6 pm.”
@@ -16,18 +22,18 @@ Setup takes about five minutes: it walks you through creating your Google creden
 
 ## What it covers
 
-| Area | |
-|---|---|
-| **Publishing** | Upload local files or public URLs with resumable 16 MB chunks, checkpointed to disk: a dropped connection or closed app resumes from the last byte YouTube confirmed. Private, unlisted, public or scheduled (`publish_at`). Thumbnail, playlists and captions in the same call. |
-| **Videos** | List everything on the channel (including private and scheduled), edit title, description, tags, category, languages, audience and AI-content disclosure, translate titles and descriptions, publish, unlist, schedule, delete. |
-| **Metadata** | `generate_metadata` hands your AI the transcript with timestamps plus YouTube's rules; it writes the copy. `preview_metadata` checks limits and chapter rules before anything is sent. Templates add your standard footer, links, tags and naming. |
-| **Channel** | Profile and stats, description, keywords, country, language, trailer for non-subscribers, translations, banner, video watermark. |
-| **Comments** | Read comments per video or across the channel, including *held for review* and *likely spam*; reply as the channel; publish, hold or remove; ban authors; delete your own comments. |
-| **Analytics** | Overview, daily trend, top videos, traffic sources, YouTube search terms, geography, devices, age and gender, audience retention for a video, subscribed vs not, or any custom metrics and dimensions. |
-| **Playlists** | List, create, edit, delete, add, remove, reorder. Name a playlist and it is found (or created). |
-| **Captions** | Upload `.srt` / `.vtt`, replace, download, delete; optional transcription of local videos with any OpenAI-compatible speech-to-text API (OpenAI, Azure OpenAI, Groq, local Whisper). |
-| **Several channels** | Connect any number of channels, including brand accounts; pick a default or name one per call. |
-| **Quota-aware** | Tracks the daily budget, stops on `quotaExceeded` instead of hammering the API, and resumes stopped uploads after the midnight Pacific reset. |
+| Area                 |                                                                                                                                                                                                                                                                                  |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Publishing**       | Upload local files or public URLs with resumable 16 MB chunks, checkpointed to disk: a dropped connection or closed app resumes from the last byte YouTube confirmed. Private, unlisted, public or scheduled (`publish_at`). Thumbnail, playlists and captions in the same call. |
+| **Videos**           | List everything on the channel (including private and scheduled), edit title, description, tags, category, languages, audience and AI-content disclosure, translate titles and descriptions, publish, unlist, schedule, delete.                                                  |
+| **Metadata**         | `generate_metadata` hands your AI the transcript with timestamps plus YouTube's rules; it writes the copy. `preview_metadata` checks limits and chapter rules before anything is sent. Templates add your standard footer, links, tags and naming.                               |
+| **Channel**          | Profile and stats, description, keywords, country, language, trailer for non-subscribers, translations, banner, video watermark.                                                                                                                                                 |
+| **Comments**         | Read comments per video or across the channel, including _held for review_ and _likely spam_; reply as the channel; publish, hold or remove; ban authors; delete your own comments.                                                                                              |
+| **Analytics**        | Overview, daily trend, top videos, traffic sources, YouTube search terms, geography, devices, age and gender, audience retention for a video, subscribed vs not, or any custom metrics and dimensions.                                                                           |
+| **Playlists**        | List, create, edit, delete, add, remove, reorder. Name a playlist and it is found (or created).                                                                                                                                                                                  |
+| **Captions**         | Upload `.srt` / `.vtt`, replace, download, delete; optional transcription of local videos with any OpenAI-compatible speech-to-text API (OpenAI, Azure OpenAI, Groq, local Whisper).                                                                                             |
+| **Several channels** | Connect any number of channels, including brand accounts; pick a default or name one per call.                                                                                                                                                                                   |
+| **Quota-aware**      | Tracks the daily budget, stops on `quotaExceeded` instead of hammering the API, and resumes stopped uploads after the midnight Pacific reset.                                                                                                                                    |
 
 ## Install
 
@@ -42,10 +48,11 @@ Setup does four things:
 1. **Google credentials** (one time). YouTube only allows this through an OAuth client you own, so setup opens the right Google Cloud pages and you click through:
    1. [Create a project](https://console.cloud.google.com/projectcreate).
    2. Enable the [YouTube Data API v3](https://console.cloud.google.com/apis/library/youtube.googleapis.com) and the [YouTube Analytics API](https://console.cloud.google.com/apis/library/youtubeanalytics.googleapis.com).
-   3. [Configure the OAuth consent screen](https://console.cloud.google.com/auth/overview): *External*, then under *Audience* either add your Google account as a test user, or click **Publish app** so sign-ins don't expire every 7 days (Google shows an “unverified app” notice you can click through for your own app).
+   3. [Configure the OAuth consent screen](https://console.cloud.google.com/auth/overview): _External_, then under _Audience_ either add your Google account as a test user, or click **Publish app** so sign-ins don't expire every 7 days (Google shows an “unverified app” notice you can click through for your own app).
    4. [Create an OAuth client](https://console.cloud.google.com/auth/clients/create) of type **Desktop app** and download the JSON.
 
    Then drag that JSON file into the terminal. The client ID and secret go into your keychain.
+
 2. **Connect a channel.** Your browser opens Google sign-in; choose the account and the channel.
 3. **Transcription** (optional).
 4. **Add to your AI apps.** It detects and configures **Claude Desktop, Claude Code, Cursor, Windsurf, Codex and Hermes Agent**. Your original config is kept as `*.before-youtube-channel-mcp.bak`, and an existing server named `youtube` is never touched. Restart the app afterwards.
@@ -59,7 +66,10 @@ Prefer a global install? `npm i -g @joinhackyard/youtube-channel-mcp && youtube-
 ```json
 {
   "mcpServers": {
-    "youtube-channel": { "command": "npx", "args": ["-y", "@joinhackyard/youtube-channel-mcp@latest"] }
+    "youtube-channel": {
+      "command": "npx",
+      "args": ["-y", "@joinhackyard/youtube-channel-mcp@latest"]
+    }
   }
 }
 ```
@@ -91,18 +101,18 @@ Claude Code: `claude mcp add youtube-channel --scope user -- npx -y @joinhackyar
 
 ## Tools
 
-| Tool | What it does |
-|---|---|
-| `auth_status` · `connect_channel` · `list_channels` · `set_default_channel` · `disconnect_channel` | Connection, sign-in health, quota, known limits |
-| `upload_video` · `get_upload_status` · `list_uploads` · `cancel_upload` · `resume_upload` | Background uploads from a file or URL, with progress and resume |
-| `list_my_videos` · `get_video` · `update_video` · `set_visibility` · `set_thumbnail` · `set_video_localizations` · `delete_video` · `list_categories` | Videos |
-| `get_channel` · `update_channel` · `set_channel_banner` · `set_watermark` | Channel profile and branding |
-| `list_comments` · `reply_to_comment` · `moderate_comments` · `delete_comment` | Comments and moderation |
-| `get_analytics` | YouTube Analytics reports for the channel or a video |
-| `list_playlists` · `create_playlist` · `update_playlist` · `delete_playlist` · `add_to_playlist` · `remove_from_playlist` · `move_in_playlist` · `list_playlist_items` | Playlists |
-| `list_captions` · `upload_captions` · `download_captions` · `delete_captions` · `transcribe_video` | Captions and transcripts |
-| `generate_metadata` · `preview_metadata` · `list_templates` · `save_template` · `delete_template` | Writing metadata and channel templates |
-| `quota_status` | Today's quota estimate |
+| Tool                                                                                                                                                                   | What it does                                                    |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| `auth_status` · `connect_channel` · `list_channels` · `set_default_channel` · `disconnect_channel`                                                                     | Connection, sign-in health, quota, known limits                 |
+| `upload_video` · `get_upload_status` · `list_uploads` · `cancel_upload` · `resume_upload`                                                                              | Background uploads from a file or URL, with progress and resume |
+| `list_my_videos` · `get_video` · `update_video` · `set_visibility` · `set_thumbnail` · `set_video_localizations` · `delete_video` · `list_categories`                  | Videos                                                          |
+| `get_channel` · `update_channel` · `set_channel_banner` · `set_watermark`                                                                                              | Channel profile and branding                                    |
+| `list_comments` · `reply_to_comment` · `moderate_comments` · `delete_comment`                                                                                          | Comments and moderation                                         |
+| `get_analytics`                                                                                                                                                        | YouTube Analytics reports for the channel or a video            |
+| `list_playlists` · `create_playlist` · `update_playlist` · `delete_playlist` · `add_to_playlist` · `remove_from_playlist` · `move_in_playlist` · `list_playlist_items` | Playlists                                                       |
+| `list_captions` · `upload_captions` · `download_captions` · `delete_captions` · `transcribe_video`                                                                     | Captions and transcripts                                        |
+| `generate_metadata` · `preview_metadata` · `list_templates` · `save_template` · `delete_template`                                                                      | Writing metadata and channel templates                          |
+| `quota_status`                                                                                                                                                         | Today's quota estimate                                          |
 
 There is also a `publish_video` prompt for clients that support MCP prompts.
 
@@ -150,7 +160,7 @@ Everything works without these. Environment variables override what setup stored
 | Variable                                        | Default                     |                                                                                                 |
 | ----------------------------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------- |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`     | from keychain               | Desktop-app OAuth client                                                                        |
-| `YT_MCP_HOME`                                   | `~/.youtube-channel-mcp`  | Data folder (state database, templates, transcripts)                                            |
+| `YT_MCP_HOME`                                   | `~/.youtube-channel-mcp`    | Data folder (state database, templates, transcripts)                                            |
 | `YT_CONFIRM`                                    | `public`                    | `public`, `always` or `never`                                                                   |
 | `YT_CHUNK_MB`                                   | `16`                        | Upload chunk size (rounded to 256 KB)                                                           |
 | `YT_DAILY_UNIT_LIMIT` / `YT_DAILY_UPLOAD_LIMIT` | `10000` / `100`             | Budgets used for the local estimate                                                             |
@@ -180,18 +190,15 @@ youtube-channel-mcp uninstall [ids]
 youtube-channel-mcp config             print config snippets
 ```
 
-## Develop
+## Contributing
 
-```bash
-git clone https://github.com/joinhackyard/youtube-channel-mcp && cd youtube-channel-mcp
-npm install && npm test
-node dist/src/cli.js setup     # or: node dist/src/cli.js install --node
-```
+Contributions are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md) for setup, layout and guidelines. Please follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 
-Releases are published from GitHub Actions with npm trusted publishing (no tokens): bump `version` in `package.json`, commit, then `git tag vX.Y.Z && git push --tags`.
-
-Issues and pull requests are welcome.
+- Questions and setup help: [Discussions](https://github.com/joinhackyard/youtube-channel-mcp/discussions), see also [SUPPORT.md](SUPPORT.md)
+- Bugs and ideas: [Issues](https://github.com/joinhackyard/youtube-channel-mcp/issues/new/choose)
+- Security problems: report privately, see [SECURITY.md](SECURITY.md)
+- Release notes: [CHANGELOG.md](CHANGELOG.md)
 
 ## License
 
-MIT. Built by [Hackyard](https://hackyard.org). Not affiliated with YouTube or Google.
+[MIT](LICENSE). Built and maintained by [Hackyard](https://hackyard.org). Not affiliated with, or endorsed by, YouTube or Google. YouTube is a trademark of Google LLC.

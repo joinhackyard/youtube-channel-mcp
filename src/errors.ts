@@ -63,17 +63,12 @@ interface GoogleErrorShape {
 }
 
 /** Turn a googleapis / gaxios / fetch error (or a parsed JSON error body) into a YtError. */
-export function classifyGoogleError(
-  err: unknown,
-  context = "YouTube request",
-): YtError {
+export function classifyGoogleError(err: unknown, context = "YouTube request"): YtError {
   if (err instanceof YtError) return err;
   const e = (err ?? {}) as GoogleErrorShape;
   const data = e.response?.data;
   const status =
-    e.response?.status ??
-    e.status ??
-    (typeof e.code === "number" ? e.code : undefined);
+    e.response?.status ?? e.status ?? (typeof e.code === "number" ? e.code : undefined);
   const apiErr = typeof data?.error === "object" ? data.error : undefined;
   const reasons = (apiErr?.errors ?? e.errors ?? []).map((x) => x.reason ?? "");
   const reason = reasons[0] ?? "";
@@ -90,14 +85,12 @@ export function classifyGoogleError(
       },
     );
   }
-  if (
-    reasons.some((r) => r === "quotaExceeded" || r === "dailyLimitExceeded")
-  ) {
-    return new YtError(
-      "quota_exceeded",
-      `YouTube API quota exhausted (${context}).`,
-      { hint: QUOTA_HINT, status, reason },
-    );
+  if (reasons.some((r) => r === "quotaExceeded" || r === "dailyLimitExceeded")) {
+    return new YtError("quota_exceeded", `YouTube API quota exhausted (${context}).`, {
+      hint: QUOTA_HINT,
+      status,
+      reason,
+    });
   }
   if (reasons.includes("uploadLimitExceeded")) {
     return new YtError(
@@ -111,16 +104,14 @@ export function classifyGoogleError(
     );
   }
   if (
-    reasons.some(
-      (r) => r === "rateLimitExceeded" || r === "userRateLimitExceeded",
-    ) ||
+    reasons.some((r) => r === "rateLimitExceeded" || r === "userRateLimitExceeded") ||
     status === 429
   ) {
-    return new YtError(
-      "rate_limited",
-      "YouTube is rate limiting requests right now.",
-      { retryable: true, status, reason },
-    );
+    return new YtError("rate_limited", "YouTube is rate limiting requests right now.", {
+      retryable: true,
+      status,
+      reason,
+    });
   }
   if (status === 401) {
     return new YtError("auth_expired", "Google rejected the access token.", {
@@ -143,35 +134,26 @@ export function classifyGoogleError(
       });
     }
     if (reason === "youtubeSignupRequired") {
-      return new YtError(
-        "forbidden",
-        "This Google account has no YouTube channel yet.",
-        {
-          status,
-          reason,
-          hint: "Create the channel at https://www.youtube.com/create_channel, then connect again.",
-        },
-      );
+      return new YtError("forbidden", "This Google account has no YouTube channel yet.", {
+        status,
+        reason,
+        hint: "Create the channel at https://www.youtube.com/create_channel, then connect again.",
+      });
     }
     return new YtError("forbidden", message, { status, reason });
   }
-  if (status === 404)
-    return new YtError("not_found", message, { status, reason });
-  if (status === 400)
-    return new YtError("invalid_request", message, { status, reason });
+  if (status === 404) return new YtError("not_found", message, { status, reason });
+  if (status === 400) return new YtError("invalid_request", message, { status, reason });
   if (status && status >= 500)
     return new YtError("server_error", message, {
       retryable: true,
       status,
       reason,
     });
-  const code = (e.code ?? (e.cause as { code?: string } | undefined)?.code) as
-    string | undefined;
+  const code = (e.code ?? (e.cause as { code?: string } | undefined)?.code) as string | undefined;
   if (
     code &&
-    /ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|ECONNREFUSED|EPIPE|UND_ERR/.test(
-      String(code),
-    )
+    /ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|ECONNREFUSED|EPIPE|UND_ERR/.test(String(code))
   ) {
     return new YtError("network", `Network error: ${message}`, {
       retryable: true,
@@ -186,10 +168,7 @@ export function classifyGoogleError(
 }
 
 /** Parse a YouTube JSON error body from a raw fetch Response. */
-export async function errorFromResponse(
-  res: Response,
-  context: string,
-): Promise<YtError> {
+export async function errorFromResponse(res: Response, context: string): Promise<YtError> {
   let data: unknown = undefined;
   try {
     data = await res.json();

@@ -72,10 +72,7 @@ export class Quota {
   ) {}
 
   private ensure(day: string) {
-    this.db.run(
-      "insert into quota(day) values (?) on conflict(day) do nothing",
-      day,
-    );
+    this.db.run("insert into quota(day) values (?) on conflict(day) do nothing", day);
   }
 
   charge(units: number) {
@@ -109,10 +106,7 @@ export class Quota {
   /** Refuse to call YouTube when we already know today's budget is gone. */
   assertAvailable(kind: "units" | "uploads") {
     const s = this.status();
-    if (
-      kind === "uploads" &&
-      (s.exhausted === "uploads" || s.uploads_used >= s.uploads_limit)
-    ) {
+    if (kind === "uploads" && (s.exhausted === "uploads" || s.uploads_used >= s.uploads_limit)) {
       throw new YtError(
         "upload_limit_exceeded",
         `Daily upload budget used (${s.uploads_used}/${s.uploads_limit}).`,
@@ -122,11 +116,9 @@ export class Quota {
       );
     }
     if (s.exhausted === "units") {
-      throw new YtError(
-        "quota_exceeded",
-        "YouTube reported the daily API quota as exhausted.",
-        { hint: `Quota resets at ${s.resets_at}.` },
-      );
+      throw new YtError("quota_exceeded", "YouTube reported the daily API quota as exhausted.", {
+        hint: `Quota resets at ${s.resets_at}.`,
+      });
     }
   }
 

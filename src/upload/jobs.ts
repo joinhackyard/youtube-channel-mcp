@@ -187,10 +187,7 @@ export class JobManager extends EventEmitter {
           status,
           limit,
         )
-      : this.db.all<JobRow>(
-          "select * from jobs order by created_at desc limit ?",
-          limit,
-        );
+      : this.db.all<JobRow>("select * from jobs order by created_at desc limit ?", limit);
   }
 
   cancel(id: string): JobRow {
@@ -242,14 +239,9 @@ export class JobManager extends EventEmitter {
   }
 
   /** Resolve when the job changes status or finishes, or after `ms`. Reports byte progress meanwhile. */
-  async waitFor(
-    id: string,
-    ms: number,
-    onProgress?: (e: ProgressEvent) => void,
-  ): Promise<JobRow> {
+  async waitFor(id: string, ms: number, onProgress?: (e: ProgressEvent) => void): Promise<JobRow> {
     const start = this.get(id);
-    if (!start || ms <= 0 || !this.isActiveOrQueued(start.status))
-      return this.mustGet(id);
+    if (!start || ms <= 0 || !this.isActiveOrQueued(start.status)) return this.mustGet(id);
     return new Promise((resolve) => {
       const done = () => {
         clearTimeout(timer);
@@ -376,10 +368,7 @@ export class JobManager extends EventEmitter {
     }
   }
 
-  private update(
-    id: string,
-    fields: Partial<Record<keyof JobRow, string | number | null>>,
-  ) {
+  private update(id: string, fields: Partial<Record<keyof JobRow, string | number | null>>) {
     const keys = Object.keys(fields);
     if (!keys.length) return;
     const n = this.db.run(
@@ -399,19 +388,13 @@ export class JobManager extends EventEmitter {
     try {
       const row = this.channels.byRowId(job.channel_row_id);
       if (!row)
-        throw new YtError(
-          "not_connected",
-          "The channel for this upload is no longer connected.",
-          { hint: "Reconnect it, then resume_upload." },
-        );
+        throw new YtError("not_connected", "The channel for this upload is no longer connected.", {
+          hint: "Reconnect it, then resume_upload.",
+        });
       if (row.status === "needs_reconnect")
-        throw new YtError(
-          "auth_expired",
-          `The Google sign-in for "${row.title}" expired.`,
-          {
-            hint: "Call connect_channel; the upload resumes on its own afterwards.",
-          },
-        );
+        throw new YtError("auth_expired", `The Google sign-in for "${row.title}" expired.`, {
+          hint: "Call connect_channel; the upload resumes on its own afterwards.",
+        });
       const api = await this.channels.api(row);
 
       let video: youtube_v3.Schema$Video | undefined;
@@ -448,20 +431,15 @@ export class JobManager extends EventEmitter {
           });
           job = this.get(job.id)!;
         }
-        const f = await inspectVideoFile(
-          job.file_path!,
-          this.cfg.maxUploadBytes,
-        );
+        const f = await inspectVideoFile(job.file_path!, this.cfg.maxUploadBytes);
         if (
           job.file_size !== f.size ||
           (job.file_mtime && Math.abs(job.file_mtime - f.mtimeMs) > 1000)
         ) {
           if (job.session_uri)
-            throw new YtError(
-              "file_error",
-              "The video file changed since the upload started.",
-              { hint: "Start a new upload_video for the new file." },
-            );
+            throw new YtError("file_error", "The video file changed since the upload started.", {
+              hint: "Start a new upload_video for the new file.",
+            });
           this.update(job.id, { file_size: f.size, file_mtime: f.mtimeMs });
           job = this.get(job.id)!;
         }
@@ -506,20 +484,21 @@ export class JobManager extends EventEmitter {
           status: "finishing",
           bytes_sent: f.size,
         });
-        this.db.audit(
-          "upload.completed",
-          { job: job.id },
-          row.channel_id,
-          video.id,
-        );
+        this.db.audit("upload.completed", { job: job.id }, row.channel_id, video.id);
       }
 
       // 3. Post-upload steps. Each is independent: one failing does not undo the upload.
       // Completed steps are saved as they finish, so a re-claimed job never adds playlist items or captions twice.
       const videoId = job.video_id ?? video!.id!;
-      const prev = job.result ? ((JSON.parse(job.result) as { steps?: Record<string, { ok?: boolean }> }).steps ?? {}) : {};
+      const prev = job.result
+        ? ((JSON.parse(job.result) as { steps?: Record<string, { ok?: boolean }> }).steps ?? {})
+        : {};
       const steps: Record<string, unknown> = { ...prev };
-      const step = async (name: string, wanted: unknown, fn: () => Promise<Record<string, unknown>>) => {
+      const step = async (
+        name: string,
+        wanted: unknown,
+        fn: () => Promise<Record<string, unknown>>,
+      ) => {
         if (!wanted || prev[name]?.ok) return;
         this.assertOwned(job.id, signal);
         try {
@@ -529,9 +508,15 @@ export class JobManager extends EventEmitter {
         }
         this.update(job.id, { result: JSON.stringify({ steps }) });
       };
-      await step("thumbnail", post.thumbnail_path, () => setThumbnail(api, videoId, post.thumbnail_path!));
+      await step("thumbnail", post.thumbnail_path, () =>
+        setThumbnail(api, videoId, post.thumbnail_path!),
+      );
       await step("playlists", post.playlists?.length, async () => {
-        const r = await resolvePlaylists(api, post.playlists!, post.create_missing_playlists ?? true);
+        const r = await resolvePlaylists(
+          api,
+          post.playlists!,
+          post.create_missing_playlists ?? true,
+        );
         const added = [];
         for (const pid of r.ids) added.push(await addToPlaylist(api, pid, videoId));
         return { added, created: r.created, missing: r.missing };
@@ -543,11 +528,7 @@ export class JobManager extends EventEmitter {
       const warnings = [...meta.warnings];
       let summary: ReturnType<typeof summariseVideo> | undefined;
       try {
-        const v = await api.getVideo(videoId, [
-          "snippet",
-          "status",
-          "processingDetails",
-        ]);
+        const v = await api.getVideo(videoId, ["snippet", "status", "processingDetails"]);
         summary = summariseVideo(v);
         const lock = privateLockWarning(meta, v);
         if (lock) {
@@ -555,9 +536,7 @@ export class JobManager extends EventEmitter {
           this.db.setSetting("private_lock_observed", new Date().toISOString());
         }
       } catch (e) {
-        warnings.push(
-          `Could not read the video back yet: ${(e as Error).message}`,
-        );
+        warnings.push(`Could not read the video back yet: ${(e as Error).message}`);
       }
       this.update(job.id, {
         status: "done",
@@ -573,17 +552,14 @@ export class JobManager extends EventEmitter {
       this.cleanupDownload(job);
       log.info("upload done", { job: job.id, video: videoId });
     } catch (err) {
-      const e =
-        err instanceof YtError ? err : classifyGoogleError(err, "upload");
+      const e = err instanceof YtError ? err : classifyGoogleError(err, "upload");
       if (e.code === "cancelled" || signal.aborted) {
         log.info("upload cancelled", { job: job.id });
         return;
       }
       if (e.code === "quota_exceeded") this.quota.markExhausted("units");
       if (e.code === "upload_limit_exceeded") this.quota.markExhausted("uploads");
-      const status: JobStatus = RESUMABLE.includes(e.code)
-        ? "stopped"
-        : "failed";
+      const status: JobStatus = RESUMABLE.includes(e.code) ? "stopped" : "failed";
       this.update(job.id, {
         status,
         error: e.hint ? `${e.message} ${e.hint}` : e.message,
@@ -601,10 +577,7 @@ export class JobManager extends EventEmitter {
   }
 
   private cleanupDownload(job: JobRow) {
-    if (
-      job.source_kind === "url" &&
-      job.file_path?.startsWith(this.downloadsDir)
-    ) {
+    if (job.source_kind === "url" && job.file_path?.startsWith(this.downloadsDir)) {
       try {
         unlinkSync(job.file_path);
       } catch {

@@ -2,8 +2,7 @@ import { open } from "node:fs/promises";
 import type { youtube_v3 } from "@googleapis/youtube";
 import { classifyGoogleError, errorFromResponse, YtError } from "../errors.js";
 
-export const UPLOAD_ENDPOINT =
-  "https://www.googleapis.com/upload/youtube/v3/videos";
+export const UPLOAD_ENDPOINT = "https://www.googleapis.com/upload/youtube/v3/videos";
 
 export interface ResumableOptions {
   filePath: string;
@@ -30,8 +29,7 @@ export interface ResumableOptions {
   sleep?: (ms: number) => Promise<void>;
 }
 
-const defaultSleep = (ms: number) =>
-  new Promise<void>((r) => setTimeout(r, ms));
+const defaultSleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 /** Parse a `Range: bytes=0-1234` header into the next byte offset. No header means nothing was stored. */
 export function nextOffsetFromRange(range: string | null): number {
@@ -46,9 +44,7 @@ class SessionGone extends Error {}
  * YouTube resumable upload with checkpointing: the session URI and byte offset survive restarts,
  * network drops resume from the last stored byte, and quota errors stop immediately.
  */
-export async function resumableUpload(
-  o: ResumableOptions,
-): Promise<youtube_v3.Schema$Video> {
+export async function resumableUpload(o: ResumableOptions): Promise<youtube_v3.Schema$Video> {
   const f = o.fetchImpl ?? fetch;
   const sleep = o.sleep ?? defaultSleep;
   const maxRetries = o.maxRetries ?? 12;
@@ -64,9 +60,7 @@ export async function resumableUpload(
     if (e.code === "auth_expired" && e.opts.reason === "invalid_grant") throw e;
     failures++;
     if (failures > maxRetries) throw e;
-    const delay =
-      Math.min(60_000, 1000 * 2 ** Math.min(failures, 6)) +
-      Math.random() * 1000;
+    const delay = Math.min(60_000, 1000 * 2 ** Math.min(failures, 6)) + Math.random() * 1000;
     await sleep(delay);
   };
 
@@ -94,11 +88,7 @@ export async function resumableUpload(
       }
       if (res.ok) {
         const loc = res.headers.get("location");
-        if (!loc)
-          throw new YtError(
-            "server_error",
-            "YouTube did not return an upload session.",
-          );
+        if (!loc) throw new YtError("server_error", "YouTube did not return an upload session.");
         o.onSession(loc);
         return loc;
       }
@@ -117,9 +107,7 @@ export async function resumableUpload(
   };
 
   /** Ask YouTube how many bytes it has. Returns the finished video when the upload is already complete. */
-  const queryOffset = async (
-    uri: string,
-  ): Promise<number | youtube_v3.Schema$Video> => {
+  const queryOffset = async (uri: string): Promise<number | youtube_v3.Schema$Video> => {
     for (;;) {
       checkAbort();
       let res: Response;
@@ -138,8 +126,7 @@ export async function resumableUpload(
         await backoff(classifyGoogleError(err, "upload status"));
         continue;
       }
-      if (res.status === 308)
-        return nextOffsetFromRange(res.headers.get("range"));
+      if (res.status === 308) return nextOffsetFromRange(res.headers.get("range"));
       if (res.status === 200 || res.status === 201)
         return (await res.json()) as youtube_v3.Schema$Video;
       if (res.status === 404 || res.status === 410) throw new SessionGone();
@@ -177,19 +164,14 @@ export async function resumableUpload(
     }
     o.onProgress(offset, o.fileSize);
 
-    const buf = Buffer.allocUnsafe(
-      Math.min(o.chunkSize, Math.max(o.fileSize, 1)),
-    );
+    const buf = Buffer.allocUnsafe(Math.min(o.chunkSize, Math.max(o.fileSize, 1)));
     for (;;) {
       checkAbort();
       o.beforeChunk?.();
       const len = Math.min(o.chunkSize, o.fileSize - offset);
       const { bytesRead } = await fh.read(buf, 0, len, offset);
       if (bytesRead !== len)
-        throw new YtError(
-          "file_error",
-          "The video file changed or shrank while uploading.",
-        );
+        throw new YtError("file_error", "The video file changed or shrank while uploading.");
       const end = offset + len - 1;
       let res: Response;
       try {
@@ -198,9 +180,7 @@ export async function resumableUpload(
           headers: {
             Authorization: await auth(),
             "Content-Range":
-              len > 0
-                ? `bytes ${offset}-${end}/${o.fileSize}`
-                : `bytes */${o.fileSize}`,
+              len > 0 ? `bytes ${offset}-${end}/${o.fileSize}` : `bytes */${o.fileSize}`,
           },
           body: buf.subarray(0, len),
           signal: o.signal,
@@ -216,7 +196,12 @@ export async function resumableUpload(
       if (res.status === 308) {
         const next = nextOffsetFromRange(res.headers.get("range"));
         if (next > offset) failures = 0;
-        else await backoff(new YtError("server_error", "YouTube accepted a chunk but stored no new bytes.", { retryable: true }));
+        else
+          await backoff(
+            new YtError("server_error", "YouTube accepted a chunk but stored no new bytes.", {
+              retryable: true,
+            }),
+          );
         offset = next;
         o.onProgress(offset, o.fileSize);
         continue;
@@ -227,7 +212,10 @@ export async function resumableUpload(
       }
       if (res.status === 404 || res.status === 410) {
         // Session expired (they last about a week): start over, but never loop.
-        if (++restarts > 3) throw new YtError("server_error", "YouTube kept discarding the upload session.", { retryable: true });
+        if (++restarts > 3)
+          throw new YtError("server_error", "YouTube kept discarding the upload session.", {
+            retryable: true,
+          });
         uri = await startSession();
         offset = 0;
         o.onProgress(0, o.fileSize);
@@ -250,7 +238,10 @@ export async function resumableUpload(
         return await queryOffset(uri!);
       } catch (e) {
         if (!(e instanceof SessionGone)) throw e;
-        if (++restarts > 3) throw new YtError("server_error", "YouTube kept discarding the upload session.", { retryable: true });
+        if (++restarts > 3)
+          throw new YtError("server_error", "YouTube kept discarding the upload session.", {
+            retryable: true,
+          });
         uri = await startSession();
         return 0;
       }

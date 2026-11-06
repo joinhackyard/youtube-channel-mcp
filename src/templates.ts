@@ -1,4 +1,11 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
 import { YtError } from "./errors.js";
@@ -92,7 +99,10 @@ export class TemplateStore {
   save(t: Template): string {
     const parsed = TemplateSchema.parse(t);
     if (!/^[\w-]{1,64}$/.test(parsed.name)) {
-      throw new YtError("invalid_request", "Template names may use letters, numbers, - and _ only.");
+      throw new YtError(
+        "invalid_request",
+        "Template names may use letters, numbers, - and _ only.",
+      );
     }
     mkdirSync(this.dir, { recursive: true });
     const file = join(this.dir, `${parsed.name}.json`);
@@ -126,9 +136,7 @@ export class TemplateStore {
     const base = this.get(t.extends, seen);
     const merged: Template = {
       ...base,
-      ...Object.fromEntries(
-        Object.entries(t).filter(([, v]) => v !== undefined),
-      ),
+      ...Object.fromEntries(Object.entries(t).filter(([, v]) => v !== undefined)),
     } as Template;
     merged.tags = dedupe([...(t.tags ?? []), ...(base.tags ?? [])]);
     merged.hashtags = dedupe([...(t.hashtags ?? []), ...(base.hashtags ?? [])]);
@@ -158,8 +166,7 @@ export function tagsLength(tags: string[]): number {
 export function validateText(title: string, description: string) {
   const problems: string[] = [];
   if (!title.trim()) problems.push("Title is empty.");
-  if (title.length > 100)
-    problems.push(`Title is ${title.length} characters (YouTube max 100).`);
+  if (title.length > 100) problems.push(`Title is ${title.length} characters (YouTube max 100).`);
   if (/[<>]/.test(title) || /[<>]/.test(description))
     problems.push('YouTube rejects "<" and ">" in titles and descriptions.');
   if (Buffer.byteLength(description, "utf8") > 5000)
@@ -170,10 +177,7 @@ export function validateText(title: string, description: string) {
 }
 
 /** Merge the agent's metadata with a template into exactly what will be sent to YouTube. */
-export function applyTemplate(
-  input: MetadataInput,
-  template?: Template,
-): ResolvedMetadata {
+export function applyTemplate(input: MetadataInput, template?: Template): ResolvedMetadata {
   const warnings: string[] = [];
   let title = input.title.trim();
   if (
@@ -183,23 +187,14 @@ export function applyTemplate(
     const formatted = template.title_format.replace("{title}", title);
     if (formatted.length <= 100) title = formatted;
     else
-      warnings.push(
-        `Template title format skipped: "${formatted}" would exceed 100 characters.`,
-      );
+      warnings.push(`Template title format skipped: "${formatted}" would exceed 100 characters.`);
   }
   if (title.length > 70)
-    warnings.push(
-      `Title is ${title.length} characters; mobile shows about 70.`,
-    );
+    warnings.push(`Title is ${title.length} characters; mobile shows about 70.`);
 
   const body = (input.description ?? "").trim();
-  const parts = [template?.description_header, body].filter((p): p is string =>
-    Boolean(p?.trim()),
-  );
-  if (
-    template?.description_footer &&
-    !body.includes(template.description_footer.split("\n")[0])
-  )
+  const parts = [template?.description_header, body].filter((p): p is string => Boolean(p?.trim()));
+  if (template?.description_footer && !body.includes(template.description_footer.split("\n")[0]))
     parts.push(template.description_footer);
   const hashtags = (template?.hashtags ?? []).filter(
     (h) => !body.toLowerCase().includes(h.toLowerCase()),
@@ -209,13 +204,8 @@ export function applyTemplate(
 
   let tags = dedupe([...(input.tags ?? []), ...(template?.tags ?? [])]);
   while (tags.length && tagsLength(tags) > 500) tags = tags.slice(0, -1);
-  if (
-    tags.length <
-    dedupe([...(input.tags ?? []), ...(template?.tags ?? [])]).length
-  )
-    warnings.push(
-      "Some tags were dropped to stay under the 500-character tag limit.",
-    );
+  if (tags.length < dedupe([...(input.tags ?? []), ...(template?.tags ?? [])]).length)
+    warnings.push("Some tags were dropped to stay under the 500-character tag limit.");
 
   validateText(title, description);
   return {
@@ -224,8 +214,7 @@ export function applyTemplate(
     tags,
     category_id: input.category_id ?? template?.category_id ?? "28",
     default_language: input.default_language ?? template?.default_language,
-    default_audio_language:
-      input.default_audio_language ?? template?.default_audio_language,
+    default_audio_language: input.default_audio_language ?? template?.default_audio_language,
     made_for_kids: input.made_for_kids ?? template?.made_for_kids ?? false,
     license: input.license ?? template?.license,
     embeddable: input.embeddable ?? template?.embeddable,

@@ -29,20 +29,14 @@ export function fail(err: unknown): CallToolResult {
     content: [
       {
         type: "text",
-        text: JSON.stringify(
-          { error: e.message, code: e.code, hint: e.hint },
-          null,
-          2,
-        ),
+        text: JSON.stringify({ error: e.message, code: e.code, hint: e.hint }, null, 2),
       },
     ],
   };
 }
 
 /** Wrap a handler so every failure becomes a readable tool error instead of a protocol error. */
-export function safe<A>(
-  fn: (args: A, extra: Extra) => Promise<CallToolResult>,
-) {
+export function safe<A>(fn: (args: A, extra: Extra) => Promise<CallToolResult>) {
   return async (args: A, extra: Extra): Promise<CallToolResult> => {
     try {
       return await fn(args, extra);
@@ -103,8 +97,7 @@ export async function confirmGate(
 ): Promise<CallToolResult | null> {
   const policy = app.cfg.confirmPolicy;
   if (policy === "never") return null;
-  if (policy === "public" && !opts.publicFacing && !opts.destructive)
-    return null;
+  if (policy === "public" && !opts.publicFacing && !opts.destructive) return null;
 
   const { confirmation_token: token, ...rest } = args;
   const payloadHash = sha256(canonicalJson(rest));
@@ -115,19 +108,13 @@ export async function confirmGate(
       expires_at: number;
     }>("select * from confirmations where token = ?", token);
     if (!row || row.expires_at < Date.now())
-      throw new YtError(
-        "invalid_request",
-        "Confirmation token is invalid or expired.",
-        { hint: "Call again without confirmation_token to get a new one." },
-      );
+      throw new YtError("invalid_request", "Confirmation token is invalid or expired.", {
+        hint: "Call again without confirmation_token to get a new one.",
+      });
     if (row.action !== action || row.payload_hash !== payloadHash) {
-      throw new YtError(
-        "invalid_request",
-        "The arguments changed since the user confirmed.",
-        {
-          hint: "Call again without confirmation_token, and show the user the new summary.",
-        },
-      );
+      throw new YtError("invalid_request", "The arguments changed since the user confirmed.", {
+        hint: "Call again without confirmation_token, and show the user the new summary.",
+      });
     }
     // Single use, atomically: only the call that actually deletes the row proceeds.
     if (app.db.run("delete from confirmations where token = ?", token).changes !== 1) {

@@ -1,10 +1,14 @@
+import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
 export const APP = "youtube-channel-mcp";
 /** npm package name (published under the joinhackyard organisation). */
 export const PACKAGE = "@joinhackyard/youtube-channel-mcp";
-export const VERSION = "1.0.0";
+/** Single source of truth: the version in package.json. */
+export const VERSION: string = (
+  createRequire(import.meta.url)("../../package.json") as { version: string }
+).version;
 
 export type ConfirmPolicy = "public" | "always" | "never";
 
@@ -27,16 +31,12 @@ const int = (v: string | undefined, d: number) => {
 /** YouTube resumable chunks must be multiples of 256 KiB. */
 export function normaliseChunkSize(mb: number): number {
   const unit = 256 * 1024;
-  return Math.max(
-    unit,
-    Math.floor((Math.max(1, mb) * 1024 * 1024) / unit) * unit,
-  );
+  return Math.max(unit, Math.floor((Math.max(1, mb) * 1024 * 1024) / unit) * unit);
 }
 
 export function defaultHome(env: NodeJS.ProcessEnv = process.env): string {
   if (env.YT_MCP_HOME) return env.YT_MCP_HOME;
-  if (process.platform === "linux" && env.XDG_CONFIG_HOME)
-    return join(env.XDG_CONFIG_HOME, APP);
+  if (process.platform === "linux" && env.XDG_CONFIG_HOME) return join(env.XDG_CONFIG_HOME, APP);
   return join(homedir(), `.${APP}`);
 }
 
@@ -50,8 +50,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       clientId: env.GOOGLE_CLIENT_ID || undefined,
       clientSecret: env.GOOGLE_CLIENT_SECRET || undefined,
     },
-    confirmPolicy:
-      policy === "always" || policy === "never" ? policy : "public",
+    confirmPolicy: policy === "always" || policy === "never" ? policy : "public",
     quota: {
       dailyUnits: int(env.YT_DAILY_UNIT_LIMIT, 10_000),
       dailyUploads: int(env.YT_DAILY_UPLOAD_LIMIT, 100),

@@ -6,8 +6,7 @@ const order: Record<Level, number> = {
   warn: 30,
   error: 40,
 };
-const threshold =
-  order[(process.env.LOG_LEVEL as Level) ?? "info"] ?? order.info;
+const threshold = order[(process.env.LOG_LEVEL as Level) ?? "info"] ?? order.info;
 
 const SECRET =
   /(ya29\.[\w-]+|1\/\/[\w-]{20,}|4\/[\w-]{20,}|GOCSPX-[\w-]+|cf_[\w-]{10,}|Bearer\s+[\w.-]+)/g;

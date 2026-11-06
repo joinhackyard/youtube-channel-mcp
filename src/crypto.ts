@@ -42,9 +42,7 @@ export function decrypt(key: Buffer, blob: string): string {
   const raw = Buffer.from(blob, "base64");
   const d = createDecipheriv("aes-256-gcm", key, raw.subarray(0, 12));
   d.setAuthTag(raw.subarray(12, 28));
-  return Buffer.concat([d.update(raw.subarray(28)), d.final()]).toString(
-    "utf8",
-  );
+  return Buffer.concat([d.update(raw.subarray(28)), d.final()]).toString("utf8");
 }
 
 /** Stable JSON for hashing confirmation payloads. */

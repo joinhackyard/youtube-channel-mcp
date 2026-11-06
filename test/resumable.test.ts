@@ -4,10 +4,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import {
-  nextOffsetFromRange,
-  resumableUpload,
-} from "../src/upload/resumable.js";
+import { nextOffsetFromRange, resumableUpload } from "../src/upload/resumable.js";
 import { YtError } from "../src/errors.js";
 
 const CHUNK = 256 * 1024;
@@ -61,8 +58,7 @@ function fakeYouTube(
     if (!u.endsWith(`/${sessions}`)) return new Response(null, { status: 404 });
     if (range.startsWith("bytes */")) {
       calls.push("query");
-      if (stored >= total)
-        return new Response(JSON.stringify({ id: "vid123" }), { status: 200 });
+      if (stored >= total) return new Response(JSON.stringify({ id: "vid123" }), { status: 200 });
       return new Response(null, {
         status: 308,
         headers: stored ? { Range: `bytes=0-${stored - 1}` } : {},
@@ -83,10 +79,9 @@ function fakeYouTube(
     received.push(body);
     stored += body.length;
     if (stored >= total)
-      return new Response(
-        JSON.stringify({ id: "vid123", status: { privacyStatus: "private" } }),
-        { status: 201 },
-      );
+      return new Response(JSON.stringify({ id: "vid123", status: { privacyStatus: "private" } }), {
+        status: 201,
+      });
     return new Response(null, {
       status: 308,
       headers: { Range: `bytes=0-${stored - 1}` },
@@ -143,10 +138,7 @@ test("recovers from a dropped connection by asking YouTube for the offset", asyn
   const yt = fakeYouTube(size, { dropChunk: 2 });
   const v = await resumableUpload(base(path, size, yt.impl));
   assert.equal(v.id, "vid123");
-  assert.ok(
-    yt.calls.includes("query"),
-    "should query the upload status after the drop",
-  );
+  assert.ok(yt.calls.includes("query"), "should query the upload status after the drop");
   assert.deepEqual(Buffer.concat(yt.received), data);
 });
 
@@ -172,11 +164,7 @@ test("resumes an existing session from a checkpoint", async () => {
     sessionUri: session,
   });
   assert.equal(v.id, "vid123");
-  assert.equal(
-    yt.calls.filter((c) => c === "start").length,
-    1,
-    "must not start a new session",
-  );
+  assert.equal(yt.calls.filter((c) => c === "start").length, 1, "must not start a new session");
   assert.deepEqual(Buffer.concat(yt.received), data);
 });
 

@@ -15,10 +15,7 @@ const ts = (t: string) => {
   const m = /(?:(\d+):)?(\d{1,2}):(\d{2})[.,](\d{1,3})/.exec(t.trim());
   if (!m) return 0;
   return (
-    Number(m[1] ?? 0) * 3600 +
-    Number(m[2]) * 60 +
-    Number(m[3]) +
-    Number(m[4].padEnd(3, "0")) / 1000
+    Number(m[1] ?? 0) * 3600 + Number(m[2]) * 60 + Number(m[3]) + Number(m[4].padEnd(3, "0")) / 1000
   );
 };
 
@@ -38,8 +35,7 @@ export function parseCaptions(text: string): Segment[] {
       .trim();
     if (body) out.push({ start: ts(a), end: ts(z), text: body });
   }
-  if (!out.length && text.trim())
-    out.push({ start: 0, end: 0, text: text.trim() });
+  if (!out.length && text.trim()) out.push({ start: 0, end: 0, text: text.trim() });
   return out;
 }
 
@@ -52,13 +48,8 @@ export function clock(sec: number): string {
 }
 
 /** Condense segments into ~`every`-second lines prefixed with timestamps, for writing chapters. */
-export function timestampedText(
-  segs: Segment[],
-  every = 20,
-  maxChars = 120_000,
-): string {
-  if (segs.length === 1 && segs[0].end === 0)
-    return segs[0].text.slice(0, maxChars);
+export function timestampedText(segs: Segment[], every = 20, maxChars = 120_000): string {
+  if (segs.length === 1 && segs[0].end === 0) return segs[0].text.slice(0, maxChars);
   const lines: string[] = [];
   let bucketStart = -1;
   let buf: string[] = [];
@@ -73,8 +64,7 @@ export function timestampedText(
   }
   if (buf.length) lines.push(`[${clock(bucketStart)}] ${buf.join(" ")}`);
   let out = lines.join("\n");
-  if (out.length > maxChars)
-    out = out.slice(0, maxChars) + "\n[transcript truncated]";
+  if (out.length > maxChars) out = out.slice(0, maxChars) + "\n[transcript truncated]";
   return out;
 }
 
@@ -86,15 +76,10 @@ export function toSrt(segs: Segment[]): string {
     const s = Math.floor((ms % 60000) / 1000);
     return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")},${String(ms % 1000).padStart(3, "0")}`;
   };
-  return segs
-    .map((s, i) => `${i + 1}\n${f(s.start)} --> ${f(s.end)}\n${s.text}\n`)
-    .join("\n");
+  return segs.map((s, i) => `${i + 1}\n${f(s.start)} --> ${f(s.end)}\n${s.text}\n`).join("\n");
 }
 
-function run(
-  cmd: string,
-  args: string[],
-): Promise<{ code: number; stderr: string }> {
+function run(cmd: string, args: string[]): Promise<{ code: number; stderr: string }> {
   return new Promise((resolve, reject) => {
     const p = spawn(cmd, args, { stdio: ["ignore", "ignore", "pipe"] });
     let stderr = "";
@@ -132,13 +117,9 @@ export async function transcribeFile(
     });
   }
   if (!(await hasFfmpeg())) {
-    throw new YtError(
-      "not_configured",
-      "ffmpeg is needed to extract audio for transcription.",
-      {
-        hint: "Install it (macOS: brew install ffmpeg; Ubuntu: sudo apt install ffmpeg; Windows: winget install ffmpeg).",
-      },
-    );
+    throw new YtError("not_configured", "ffmpeg is needed to extract audio for transcription.", {
+      hint: "Install it (macOS: brew install ffmpeg; Ubuntu: sudo apt install ffmpeg; Windows: winget install ffmpeg).",
+    });
   }
   const dir = await mkdtemp(join(tmpdir(), "ytp-audio-"));
   try {

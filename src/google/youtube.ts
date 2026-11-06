@@ -34,16 +34,9 @@ export class YouTubeApi {
       } catch (err) {
         const e = classifyGoogleError(err, label);
         if (e.code === "quota_exceeded") this.quota.markExhausted("units");
-        if (e.code === "upload_limit_exceeded")
-          this.quota.markExhausted("uploads");
-        if (e.code === "auth_expired" && e.opts.reason === "invalid_grant")
-          this.onAuthExpired(e);
-        if (
-          idempotent &&
-          e.retryable &&
-          e.code !== "auth_expired" &&
-          attempt < 3
-        ) {
+        if (e.code === "upload_limit_exceeded") this.quota.markExhausted("uploads");
+        if (e.code === "auth_expired" && e.opts.reason === "invalid_grant") this.onAuthExpired(e);
+        if (idempotent && e.retryable && e.code !== "auth_expired" && attempt < 3) {
           attempt++;
           await sleep(500 * 2 ** attempt + Math.random() * 300);
           continue;
@@ -57,8 +50,7 @@ export class YouTubeApi {
   async accessToken(): Promise<string> {
     try {
       const t = await this.auth.getAccessToken();
-      if (!t.token)
-        throw new YtError("auth_expired", "Google returned no access token.");
+      if (!t.token) throw new YtError("auth_expired", "Google returned no access token.");
       return t.token;
     } catch (err) {
       const e = classifyGoogleError(err, "token refresh");
@@ -88,13 +80,7 @@ export class YouTubeApi {
 
   async getVideos(
     ids: string[],
-    parts = [
-      "snippet",
-      "status",
-      "contentDetails",
-      "statistics",
-      "processingDetails",
-    ],
+    parts = ["snippet", "status", "contentDetails", "statistics", "processingDetails"],
   ) {
     if (!ids.length) return [];
     const out: youtube_v3.Schema$Video[] = [];
@@ -111,10 +97,7 @@ export class YouTubeApi {
     return out;
   }
 
-  async getVideo(
-    id: string,
-    parts?: string[],
-  ): Promise<youtube_v3.Schema$Video> {
+  async getVideo(id: string, parts?: string[]): Promise<youtube_v3.Schema$Video> {
     const [v] = await this.getVideos([id], parts);
     if (!v)
       throw new YtError(
@@ -129,8 +112,7 @@ export const PRIVACY = ["private", "unlisted", "public"] as const;
 export type Privacy = (typeof PRIVACY)[number];
 
 export const videoUrl = (id: string) => `https://youtu.be/${id}`;
-export const studioUrl = (id: string) =>
-  `https://studio.youtube.com/video/${id}/edit`;
+export const studioUrl = (id: string) => `https://studio.youtube.com/video/${id}/edit`;
 
 /** Compact, agent-friendly view of a video. */
 export function summariseVideo(v: youtube_v3.Schema$Video) {

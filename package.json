@@ -1,6 +1,6 @@
 {
   "name": "@joinhackyard/youtube-channel-mcp",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MCP server to run your whole YouTube channel from Claude, Hermes, Cursor, Codex and any MCP client: uploads, scheduling, metadata, thumbnails, playlists, captions, comments, channel branding and analytics, on the official YouTube APIs.",
   "keywords": [
     "mcp",
@@ -42,7 +42,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "npm run build && node --test --test-force-exit --test-timeout=60000 --test-concurrency=1 \"dist/test/*.test.js\"",
     "prepublishOnly": "npm test",
-    "start": "node dist/src/cli.js"
+    "start": "node dist/src/cli.js",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@googleapis/youtube": "^40.0.2",
@@ -55,7 +57,8 @@
   },
   "devDependencies": {
     "@types/node": "^22.19.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "prettier": "^3.9.10"
   },
   "publishConfig": {
     "access": "public"

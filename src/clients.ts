@@ -30,16 +30,11 @@ export function launchSpec(mode: "auto" | "npx" | "node" = "auto"): LaunchSpec {
   const script = fileURLToPath(new URL("./cli.js", import.meta.url));
   const nodeBin = dirname(process.execPath);
   const isWin = process.platform === "win32";
-  const extra = isWin
-    ? []
-    : ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin"];
+  const extra = isWin ? [] : ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin"];
   const env = {
-    PATH: [nodeBin, ...extra]
-      .filter((p, i, a) => a.indexOf(p) === i)
-      .join(delimiter),
+    PATH: [nodeBin, ...extra].filter((p, i, a) => a.indexOf(p) === i).join(delimiter),
   };
-  const viaNpx =
-    mode === "npx" || (mode === "auto" && /[\\/]_npx[\\/]/.test(script));
+  const viaNpx = mode === "npx" || (mode === "auto" && /[\\/]_npx[\\/]/.test(script));
   if (viaNpx) {
     const npx = join(nodeBin, isWin ? "npx.cmd" : "npx");
     return {
@@ -100,8 +95,7 @@ function jsonClient(
     detect: () => existsSync(detectDir),
     install(spec) {
       const cfg = readJson(file);
-      const servers =
-        (cfg.mcpServers as Record<string, unknown> | undefined) ?? {};
+      const servers = (cfg.mcpServers as Record<string, unknown> | undefined) ?? {};
       servers[SERVER_NAME] = {
         command: spec.command,
         args: spec.args,
@@ -128,13 +122,7 @@ function jsonClient(
 
 function claudeDesktopFile(): string {
   if (process.platform === "darwin")
-    return join(
-      home,
-      "Library",
-      "Application Support",
-      "Claude",
-      "claude_desktop_config.json",
-    );
+    return join(home, "Library", "Application Support", "Claude", "claude_desktop_config.json");
   if (process.platform === "win32")
     return join(
       process.env.APPDATA ?? join(home, "AppData", "Roaming"),
@@ -160,43 +148,23 @@ const claudeCode: ClientTarget = {
   name: "Claude Code",
   detect: () => which("claude"),
   install(spec) {
-    const envArgs = Object.entries(spec.env).flatMap(([k, v]) => [
-      "-e",
-      `${k}=${v}`,
-    ]);
+    const envArgs = Object.entries(spec.env).flatMap(([k, v]) => ["-e", `${k}=${v}`]);
     spawnSync("claude", ["mcp", "remove", SERVER_NAME, "--scope", "user"], {
       stdio: "ignore",
     });
     const r = spawnSync(
       "claude",
-      [
-        "mcp",
-        "add",
-        SERVER_NAME,
-        "--scope",
-        "user",
-        ...envArgs,
-        "--",
-        spec.command,
-        ...spec.args,
-      ],
+      ["mcp", "add", SERVER_NAME, "--scope", "user", ...envArgs, "--", spec.command, ...spec.args],
       { encoding: "utf8" },
     );
-    if (r.status !== 0)
-      throw new Error(
-        `claude mcp add failed: ${(r.stderr || r.stdout).trim()}`,
-      );
+    if (r.status !== 0) throw new Error(`claude mcp add failed: ${(r.stderr || r.stdout).trim()}`);
     return "Claude Code: added for all projects (user scope). Run /mcp in Claude Code to check.";
   },
   remove() {
-    const r = spawnSync(
-      "claude",
-      ["mcp", "remove", SERVER_NAME, "--scope", "user"],
-      { encoding: "utf8" },
-    );
-    return r.status === 0
-      ? "Claude Code: removed."
-      : "Claude Code: not installed.";
+    const r = spawnSync("claude", ["mcp", "remove", SERVER_NAME, "--scope", "user"], {
+      encoding: "utf8",
+    });
+    return r.status === 0 ? "Claude Code: removed." : "Claude Code: not installed.";
   },
 };
 
@@ -204,7 +172,9 @@ const claudeCode: ClientTarget = {
 export function upsertCodexToml(toml: string, spec: LaunchSpec | null): string {
   const header = `[mcp_servers.${SERVER_NAME}]`;
   // Matches [mcp_servers.youtube-channel], quoted keys, extra spaces, trailing comments, and its sub-tables.
-  const ownHeader = new RegExp(`^\\[\\s*mcp_servers\\.(["']?)${SERVER_NAME}\\1(\\.[\\w"'.-]+)?\\s*\\](\\s*#.*)?$`);
+  const ownHeader = new RegExp(
+    `^\\[\\s*mcp_servers\\.(["']?)${SERVER_NAME}\\1(\\.[\\w"'.-]+)?\\s*\\](\\s*#.*)?$`,
+  );
   const lines = toml.split("\n");
   const out: string[] = [];
   let skipping = false;
@@ -229,10 +199,7 @@ export function upsertCodexToml(toml: string, spec: LaunchSpec | null): string {
   return body + "\n";
 }
 
-const codexFile = join(
-  process.env.CODEX_HOME ?? join(home, ".codex"),
-  "config.toml",
-);
+const codexFile = join(process.env.CODEX_HOME ?? join(home, ".codex"), "config.toml");
 const codex: ClientTarget = {
   id: "codex",
   name: "Codex",
@@ -247,10 +214,7 @@ const codex: ClientTarget = {
   remove() {
     if (!existsSync(codexFile)) return "Codex: not installed.";
     backup(codexFile);
-    writeFileSync(
-      codexFile,
-      upsertCodexToml(readFileSync(codexFile, "utf8"), null),
-    );
+    writeFileSync(codexFile, upsertCodexToml(readFileSync(codexFile, "utf8"), null));
     return "Codex: removed.";
   },
 };
@@ -259,14 +223,9 @@ const codex: ClientTarget = {
  * Insert or replace `youtube:` under the top-level `mcp_servers:` key of Hermes' config.yaml,
  * keeping every other line untouched (no YAML round-trip, so comments and formatting survive).
  */
-export function upsertHermesYaml(
-  yaml: string,
-  spec: LaunchSpec | null,
-): string {
+export function upsertHermesYaml(yaml: string, spec: LaunchSpec | null): string {
   const lines = yaml.replace(/\r/g, "").split("\n");
-  let top = lines.findIndex((l) =>
-    /^mcp_servers:\s*(\{\s*\}|~|null)?\s*(#.*)?$/.test(l),
-  );
+  let top = lines.findIndex((l) => /^mcp_servers:\s*(\{\s*\}|~|null)?\s*(#.*)?$/.test(l));
   if (top >= 0) lines[top] = "mcp_servers:";
   const indentOf = (l: string) => l.length - l.trimStart().length;
 
@@ -281,7 +240,9 @@ export function upsertHermesYaml(
         break;
       }
     }
-    const firstChild = lines.slice(top + 1, end).find((l) => l.trim() && !l.trimStart().startsWith("#"));
+    const firstChild = lines
+      .slice(top + 1, end)
+      .find((l) => l.trim() && !l.trimStart().startsWith("#"));
     if (firstChild) childIndent = indentOf(firstChild);
     // Remove an existing youtube block.
     const start = lines.findIndex(
@@ -289,15 +250,13 @@ export function upsertHermesYaml(
         i > top &&
         i < end &&
         indentOf(l) === childIndent &&
-        (l.trim() === `${SERVER_NAME}:` || l.trim().startsWith(`${SERVER_NAME}: `) || l.trim().startsWith(`"${SERVER_NAME}":`)),
+        (l.trim() === `${SERVER_NAME}:` ||
+          l.trim().startsWith(`${SERVER_NAME}: `) ||
+          l.trim().startsWith(`"${SERVER_NAME}":`)),
     );
     if (start >= 0) {
       let stop = start + 1;
-      while (
-        stop < end &&
-        (!lines[stop].trim() || indentOf(lines[stop]) > childIndent)
-      )
-        stop++;
+      while (stop < end && (!lines[stop].trim() || indentOf(lines[stop]) > childIndent)) stop++;
       lines.splice(start, stop - start);
       end -= stop - start;
     }
@@ -329,10 +288,7 @@ export function upsertHermesYaml(
   return lines.join("\n").replace(/\n*$/, "\n");
 }
 
-const hermesFile = join(
-  process.env.HERMES_HOME ?? join(home, ".hermes"),
-  "config.yaml",
-);
+const hermesFile = join(process.env.HERMES_HOME ?? join(home, ".hermes"), "config.yaml");
 const hermes: ClientTarget = {
   id: "hermes",
   name: "Hermes Agent",
@@ -347,10 +303,7 @@ const hermes: ClientTarget = {
   remove() {
     if (!existsSync(hermesFile)) return "Hermes Agent: not installed.";
     backup(hermesFile);
-    writeFileSync(
-      hermesFile,
-      upsertHermesYaml(readFileSync(hermesFile, "utf8"), null),
-    );
+    writeFileSync(hermesFile, upsertHermesYaml(readFileSync(hermesFile, "utf8"), null));
     return "Hermes Agent: removed.";
   },
 };
@@ -358,19 +311,9 @@ const hermes: ClientTarget = {
 const desktopFile = claudeDesktopFile();
 
 export const CLIENTS: ClientTarget[] = [
-  jsonClient(
-    "claude-desktop",
-    "Claude Desktop",
-    desktopFile,
-    dirname(desktopFile),
-  ),
+  jsonClient("claude-desktop", "Claude Desktop", desktopFile, dirname(desktopFile)),
   claudeCode,
-  jsonClient(
-    "cursor",
-    "Cursor",
-    join(home, ".cursor", "mcp.json"),
-    join(home, ".cursor"),
-  ),
+  jsonClient("cursor", "Cursor", join(home, ".cursor", "mcp.json"), join(home, ".cursor")),
   jsonClient(
     "windsurf",
     "Windsurf",

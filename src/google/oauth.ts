@@ -1,8 +1,4 @@
-import {
-  CodeChallengeMethod,
-  OAuth2Client,
-  type Credentials,
-} from "google-auth-library";
+import { CodeChallengeMethod, OAuth2Client, type Credentials } from "google-auth-library";
 import type { Config } from "../config.js";
 import { YtError } from "../errors.js";
 
@@ -20,13 +16,9 @@ export const IDENTITY_SCOPES = ["openid", "email", "profile"];
 export function googleClient(cfg: Config, redirectUri?: string): OAuth2Client {
   const { clientId, clientSecret } = cfg.google;
   if (!clientId || !clientSecret) {
-    throw new YtError(
-      "not_configured",
-      "Google OAuth client is not configured.",
-      {
-        hint: "Run `npx @joinhackyard/youtube-channel-mcp setup` in a terminal (it walks you through creating a free Desktop-app OAuth client in Google Cloud), or set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.",
-      },
-    );
+    throw new YtError("not_configured", "Google OAuth client is not configured.", {
+      hint: "Run `npx @joinhackyard/youtube-channel-mcp setup` in a terminal (it walks you through creating a free Desktop-app OAuth client in Google Cloud), or set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.",
+    });
   }
   return new OAuth2Client({ clientId, clientSecret, redirectUri });
 }
@@ -43,8 +35,7 @@ export function authUrl(
 ): string {
   return client.generateAuthUrl({
     access_type: "offline",
-    prompt:
-      opts.consent === false ? "select_account" : "consent select_account",
+    prompt: opts.consent === false ? "select_account" : "consent select_account",
     scope: opts.scopes,
     state: opts.state,
     code_challenge_method: CodeChallengeMethod.S256,
@@ -63,11 +54,9 @@ export async function exchangeCode(
     const { tokens } = await client.getToken({ code, codeVerifier: verifier });
     return tokens;
   } catch (e) {
-    throw new YtError(
-      "auth_expired",
-      `Google sign-in failed: ${(e as Error).message}`,
-      { hint: "Start the sign-in again." },
-    );
+    throw new YtError("auth_expired", `Google sign-in failed: ${(e as Error).message}`, {
+      hint: "Start the sign-in again.",
+    });
   }
 }
 

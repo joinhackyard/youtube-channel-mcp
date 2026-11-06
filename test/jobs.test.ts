@@ -7,11 +7,7 @@ import { after, test } from "node:test";
 import { loadConfig } from "../src/config.js";
 import { Db } from "../src/db.js";
 import { Quota } from "../src/quota.js";
-import {
-  describeJob,
-  JobManager,
-  type UploadMetadata,
-} from "../src/upload/jobs.js";
+import { describeJob, JobManager, type UploadMetadata } from "../src/upload/jobs.js";
 
 const realFetch = globalThis.fetch;
 after(() => {
@@ -84,8 +80,7 @@ function setup(opts: { quotaFailures?: number; chunkDelayMs?: number } = {}) {
         return {
           items: [{ id: "PLexisting12345", snippet: { title: "Episodes" } }],
         };
-      if (label === "playlistItems.insert")
-        return { id: "item1", snippet: { position: 0 } };
+      if (label === "playlistItems.insert") return { id: "item1", snippet: { position: 0 } };
       return {};
     },
     yt: {

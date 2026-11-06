@@ -1,4 +1,12 @@
-import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { randomBytes } from "node:crypto";
 import { join } from "node:path";
 import { createRequire } from "node:module";
@@ -25,9 +33,7 @@ interface KeyringEntry {
 /** OS keychain: macOS Keychain, Windows Credential Manager, Linux Secret Service. */
 export class KeychainVault implements TokenVault {
   readonly kind = "keychain" as const;
-  constructor(
-    private readonly Entry: new (service: string, user: string) => KeyringEntry,
-  ) {}
+  constructor(private readonly Entry: new (service: string, user: string) => KeyringEntry) {}
 
   static tryCreate(): KeychainVault | null {
     try {
@@ -39,7 +45,7 @@ export class KeychainVault implements TokenVault {
       new mod.Entry(SERVICE, "__probe__").getPassword();
       return new KeychainVault(mod.Entry);
     } catch (e) {
-      log.warn("OS keychain unavailable", { error: String(e) });
+      log.debug("OS keychain unavailable", { error: String(e) });
       return null;
     }
   }
@@ -123,7 +129,10 @@ export function openVault(home: string, mode = process.env.YT_MCP_VAULT): TokenV
     if (!saved) writeFileSync(marker, "keychain\n");
     return kc;
   }
-  if (saved === "keychain") log.warn("OS keychain was used before but is unavailable now; secrets saved there cannot be read");
+  if (saved === "keychain")
+    log.warn(
+      "OS keychain was used before but is unavailable now; secrets saved there cannot be read",
+    );
   else writeFileSync(marker, "file\n");
   return new EncryptedFileVault(home);
 }

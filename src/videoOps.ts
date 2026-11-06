@@ -6,11 +6,7 @@ import type { Privacy, YouTubeApi } from "./google/youtube.js";
 import { COST } from "./quota.js";
 import { expandPath, inspectThumbnail } from "./upload/sources.js";
 
-export async function setThumbnail(
-  api: YouTubeApi,
-  videoId: string,
-  imagePath: string,
-) {
+export async function setThumbnail(api: YouTubeApi, videoId: string, imagePath: string) {
   const img = await inspectThumbnail(imagePath);
   const data = await api.call(
     COST.thumbnailsSet,
@@ -72,11 +68,7 @@ export async function createPlaylist(
 }
 
 /** Playlist names → ids. Missing names are created (private) when `create` is true. */
-export async function resolvePlaylists(
-  api: YouTubeApi,
-  refs: string[],
-  create: boolean,
-) {
+export async function resolvePlaylists(api: YouTubeApi, refs: string[], create: boolean) {
   const ids: string[] = [];
   const created: string[] = [];
   const missing: string[] = [];
@@ -87,9 +79,7 @@ export async function resolvePlaylists(
       ids.push(ref);
       continue;
     }
-    const hit = existing.find(
-      (p) => p.snippet?.title?.toLowerCase() === ref.toLowerCase(),
-    );
+    const hit = existing.find((p) => p.snippet?.title?.toLowerCase() === ref.toLowerCase());
     if (hit?.id) ids.push(hit.id);
     else if (create) {
       const p = await createPlaylist(api, ref);
@@ -142,16 +132,9 @@ export interface CaptionInput {
   replace_existing?: boolean;
 }
 
-export async function uploadCaptions(
-  api: YouTubeApi,
-  videoId: string,
-  c: CaptionInput,
-) {
+export async function uploadCaptions(api: YouTubeApi, videoId: string, c: CaptionInput) {
   if (!c.file_path && !c.content)
-    throw new YtError(
-      "invalid_request",
-      "Provide captions as file_path or content.",
-    );
+    throw new YtError("invalid_request", "Provide captions as file_path or content.");
   const body = () =>
     c.file_path
       ? createReadStream(expandPath(c.file_path))
@@ -218,9 +201,7 @@ export async function downloadCaptions(
   const tracks = list.items ?? [];
   const pick =
     tracks.find(
-      (t) =>
-        t.snippet?.trackKind !== "asr" &&
-        (!language || t.snippet?.language === language),
+      (t) => t.snippet?.trackKind !== "asr" && (!language || t.snippet?.language === language),
     ) ??
     tracks.find((t) => !language || t.snippet?.language === language) ??
     tracks[0];
@@ -233,10 +214,9 @@ export async function downloadCaptions(
     COST.captionsDownload,
     "captions.download",
     () =>
-      api.yt.captions.download(
-        { id: pick.id!, tfmt: "srt" },
-        { responseType: "text" },
-      ) as Promise<{ data: unknown }>,
+      api.yt.captions.download({ id: pick.id!, tfmt: "srt" }, { responseType: "text" }) as Promise<{
+        data: unknown;
+      }>,
   );
   return {
     srt: String(data),

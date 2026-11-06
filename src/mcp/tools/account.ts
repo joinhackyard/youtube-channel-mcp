@@ -18,22 +18,17 @@ export function registerAccountTools(server: McpServer, app: App) {
     },
     safe(async () => {
       const channels = app.channels.list().map(describeChannel);
-      const configured = Boolean(
-        app.cfg.google.clientId && app.cfg.google.clientSecret,
-      );
+      const configured = Boolean(app.cfg.google.clientId && app.cfg.google.clientSecret);
       const lock = app.db.setting("private_lock_observed");
       const next: string[] = [];
       if (!configured)
         next.push(
           "Google OAuth is not set up. Ask the user to run `npx @joinhackyard/youtube-channel-mcp setup` in a terminal.",
         );
-      else if (!channels.length)
-        next.push("No channel connected. Call connect_channel.");
+      else if (!channels.length) next.push("No channel connected. Call connect_channel.");
       for (const c of channels)
         if (c.status !== "ok")
-          next.push(
-            `"${c.title}" needs to be reconnected: call connect_channel.`,
-          );
+          next.push(`"${c.title}" needs to be reconnected: call connect_channel.`);
       return ok({
         version: VERSION,
         google_oauth_configured: configured,
@@ -67,9 +62,7 @@ export function registerAccountTools(server: McpServer, app: App) {
           .min(0)
           .max(110)
           .default(90)
-          .describe(
-            "How long to wait for the sign-in to finish before returning.",
-          ),
+          .describe("How long to wait for the sign-in to finish before returning."),
         open_browser: z.boolean().default(true),
       },
       annotations: {
@@ -84,9 +77,7 @@ export function registerAccountTools(server: McpServer, app: App) {
       const result = await Promise.race([
         done.then((row) => ({ row })),
         done.catch((e: Error) => ({ error: e })),
-        new Promise<null>((r) =>
-          setTimeout(() => r(null), wait_seconds * 1000).unref(),
-        ),
+        new Promise<null>((r) => setTimeout(() => r(null), wait_seconds * 1000).unref()),
       ]);
       if (result && "row" in result && result.row) {
         return ok(
@@ -110,17 +101,14 @@ export function registerAccountTools(server: McpServer, app: App) {
       inputSchema: {},
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    safe(async () =>
-      ok({ channels: app.channels.list().map(describeChannel) }),
-    ),
+    safe(async () => ok({ channels: app.channels.list().map(describeChannel) })),
   );
 
   server.registerTool(
     "set_default_channel",
     {
       title: "Set the default channel",
-      description:
-        "Choose which connected channel is used when a tool call does not name one.",
+      description: "Choose which connected channel is used when a tool call does not name one.",
       inputSchema: {
         channel: z.string().describe("Channel ID, @handle or name."),
       },
@@ -154,11 +142,8 @@ export function registerAccountTools(server: McpServer, app: App) {
     safe(async (args) => {
       const all = app.channels.list();
       const row =
-        all.find(
-          (c) =>
-            args.channel &&
-            [c.channel_id, c.handle, c.title].includes(args.channel),
-        ) ?? app.channels.resolve(args.channel);
+        all.find((c) => args.channel && [c.channel_id, c.handle, c.title].includes(args.channel)) ??
+        app.channels.resolve(args.channel);
       const gate = await confirmGate(
         app,
         server,

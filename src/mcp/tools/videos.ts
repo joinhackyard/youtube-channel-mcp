@@ -33,11 +33,7 @@ interface VideoChanges {
 }
 
 /** videos.update replaces whole parts, so merge the changes into the current snippet/status. */
-export async function applyVideoChanges(
-  api: YouTubeApi,
-  videoId: string,
-  c: VideoChanges,
-) {
+export async function applyVideoChanges(api: YouTubeApi, videoId: string, c: VideoChanges) {
   const cur = await api.getVideo(videoId, ["snippet", "status"]);
   const touchesSnippet = [
     "title",
@@ -56,8 +52,7 @@ export async function applyVideoChanges(
     "privacy",
     "publish_at",
   ].some((k) => k in c && c[k as keyof VideoChanges] !== undefined);
-  if (!touchesSnippet && !touchesStatus)
-    throw new YtError("invalid_request", "Nothing to change.");
+  if (!touchesSnippet && !touchesStatus) throw new YtError("invalid_request", "Nothing to change.");
   const body: youtube_v3.Schema$Video = { id: videoId };
   const parts: string[] = [];
   if (touchesSnippet) {
@@ -72,26 +67,20 @@ export async function applyVideoChanges(
     };
     validateText(body.snippet.title ?? "", body.snippet.description ?? "");
     if (tagsLength(body.snippet.tags ?? []) > 500)
-      throw new YtError(
-        "invalid_request",
-        "Tags exceed the 500-character limit.",
-      );
+      throw new YtError("invalid_request", "Tags exceed the 500-character limit.");
     parts.push("snippet");
   }
   if (touchesStatus) {
     const s = cur.status ?? {};
     let privacy = c.privacy ?? s.privacyStatus;
-    let publishAt =
-      c.publish_at === null ? undefined : (c.publish_at ?? s.publishAt);
+    let publishAt = c.publish_at === null ? undefined : (c.publish_at ?? s.publishAt);
     if (c.publish_at) privacy = "private";
     if (c.privacy && c.privacy !== "private") publishAt = undefined;
     body.status = {
       privacyStatus: privacy,
       publishAt: publishAt ?? undefined,
-      selfDeclaredMadeForKids:
-        c.made_for_kids ?? s.selfDeclaredMadeForKids ?? undefined,
-      containsSyntheticMedia:
-        c.contains_synthetic_media ?? s.containsSyntheticMedia ?? undefined,
+      selfDeclaredMadeForKids: c.made_for_kids ?? s.selfDeclaredMadeForKids ?? undefined,
+      containsSyntheticMedia: c.contains_synthetic_media ?? s.containsSyntheticMedia ?? undefined,
       embeddable: c.embeddable ?? s.embeddable,
       license: c.license ?? s.license,
       publicStatsViewable: c.public_stats_viewable ?? s.publicStatsViewable,
@@ -108,19 +97,14 @@ export async function applyVideoChanges(
 }
 
 function lockNote(wanted: Privacy | undefined, after: youtube_v3.Schema$Video) {
-  if (
-    wanted &&
-    wanted !== "private" &&
-    after.status?.privacyStatus === "private"
-  ) {
+  if (wanted && wanted !== "private" && after.status?.privacyStatus === "private") {
     return `YouTube kept the video private. If your Google Cloud project has not passed the YouTube API audit, visibility changes through the API are blocked; change it in YouTube Studio: https://studio.youtube.com/video/${after.id}/edit`;
   }
   return undefined;
 }
 
 export function registerVideoTools(server: McpServer, app: App) {
-  const api = async (channel?: string) =>
-    app.channels.api(app.channels.resolve(channel));
+  const api = async (channel?: string) => app.channels.api(app.channels.resolve(channel));
 
   server.registerTool(
     "list_my_videos",
@@ -135,9 +119,7 @@ export function registerVideoTools(server: McpServer, app: App) {
         privacy: z
           .enum(PRIVACY)
           .optional()
-          .describe(
-            "Only return videos with this privacy (filters the current page).",
-          ),
+          .describe("Only return videos with this privacy (filters the current page)."),
         query: z
           .string()
           .optional()
@@ -152,14 +134,8 @@ export function registerVideoTools(server: McpServer, app: App) {
       const a = await app.channels.api(row);
       let uploads = row.uploads_playlist_id;
       if (!uploads)
-        uploads =
-          (await a.myChannel())?.contentDetails?.relatedPlaylists?.uploads ??
-          null;
-      if (!uploads)
-        throw new YtError(
-          "not_found",
-          "Could not find the channel’s uploads list.",
-        );
+        uploads = (await a.myChannel())?.contentDetails?.relatedPlaylists?.uploads ?? null;
+      if (!uploads) throw new YtError("not_found", "Could not find the channel’s uploads list.");
       const page = await a.call(COST.list, "playlistItems.list", () =>
         a.yt.playlistItems.list({
           part: ["contentDetails"],
@@ -172,12 +148,7 @@ export function registerVideoTools(server: McpServer, app: App) {
         .map((i) => i.contentDetails?.videoId)
         .filter((x): x is string => Boolean(x));
       let videos = (
-        await a.getVideos(ids, [
-          "snippet",
-          "status",
-          "contentDetails",
-          "statistics",
-        ])
+        await a.getVideos(ids, ["snippet", "status", "contentDetails", "statistics"])
       ).map((v) => ({
         id: v.id,
         url: v.id ? videoUrl(v.id) : undefined,
@@ -191,8 +162,7 @@ export function registerVideoTools(server: McpServer, app: App) {
         likes: v.statistics?.likeCount,
         comments: v.statistics?.commentCount,
       }));
-      if (args.privacy)
-        videos = videos.filter((v) => v.privacy === args.privacy);
+      if (args.privacy) videos = videos.filter((v) => v.privacy === args.privacy);
       if (args.query)
         videos = videos.filter((v) =>
           (v.title ?? "").toLowerCase().includes(args.query!.toLowerCase()),
@@ -249,9 +219,7 @@ export function registerVideoTools(server: McpServer, app: App) {
         template: z
           .string()
           .optional()
-          .describe(
-            "Apply this template to the title/description/tags given here.",
-          ),
+          .describe("Apply this template to the title/description/tags given here."),
         channel: channelArg,
         confirmation_token: confirmArg,
       },
@@ -268,10 +236,7 @@ export function registerVideoTools(server: McpServer, app: App) {
       const warnings: string[] = [];
       if (args.template) {
         if (!args.title)
-          throw new YtError(
-            "invalid_request",
-            "Pass the title too when applying a template.",
-          );
+          throw new YtError("invalid_request", "Pass the title too when applying a template.");
         const m = applyTemplate({ ...args, title: args.title }, app.templates.get(args.template));
         // Only fields the caller passed change; the template decorates them (title format, footer, extra tags).
         changes.title = m.title;
@@ -279,25 +244,18 @@ export function registerVideoTools(server: McpServer, app: App) {
         if (args.tags !== undefined) changes.tags = m.tags;
         warnings.push(...m.warnings);
       }
-      if (changes.description)
-        warnings.push(...checkChapters(changes.description));
+      if (changes.description) warnings.push(...checkChapters(changes.description));
       if (args.publish_at && Number.isNaN(Date.parse(args.publish_at)))
-        throw new YtError(
-          "invalid_request",
-          "publish_at is not a valid date-time.",
-        );
+        throw new YtError("invalid_request", "publish_at is not a valid date-time.");
       const publicFacing =
-        Boolean(args.publish_at) ||
-        (args.privacy !== undefined && args.privacy !== "private");
+        Boolean(args.publish_at) || (args.privacy !== undefined && args.privacy !== "private");
       const gate = await confirmGate(
         app,
         server,
         "update_video",
         args,
         `Change video ${args.video_id}: ${Object.keys(args)
-          .filter(
-            (k) => !["video_id", "channel", "confirmation_token"].includes(k),
-          )
+          .filter((k) => !["video_id", "channel", "confirmation_token"].includes(k))
           .join(
             ", ",
           )}${args.privacy ? ` → ${args.privacy.toUpperCase()}` : ""}${args.publish_at ? ` → scheduled ${args.publish_at}` : ""}`,
@@ -305,12 +263,7 @@ export function registerVideoTools(server: McpServer, app: App) {
       );
       if (gate) return gate;
       const { after } = await applyVideoChanges(a, args.video_id, changes);
-      app.db.audit(
-        "video.updated",
-        { fields: Object.keys(args) },
-        undefined,
-        args.video_id,
-      );
+      app.db.audit("video.updated", { fields: Object.keys(args) }, undefined, args.video_id);
       const lock = lockNote(args.publish_at ? "public" : args.privacy, after);
       if (lock) warnings.push(lock);
       return ok({ video: summariseVideo(after), warnings });
@@ -329,9 +282,7 @@ export function registerVideoTools(server: McpServer, app: App) {
         publish_at: z
           .string()
           .optional()
-          .describe(
-            "ISO 8601 date-time to go public; the video stays private until then.",
-          ),
+          .describe("ISO 8601 date-time to go public; the video stays private until then."),
         channel: channelArg,
         confirmation_token: confirmArg,
       },
@@ -347,13 +298,9 @@ export function registerVideoTools(server: McpServer, app: App) {
         throw new YtError("invalid_request", "Pass privacy or publish_at.");
       if (
         args.publish_at &&
-        (Number.isNaN(Date.parse(args.publish_at)) ||
-          Date.parse(args.publish_at) < Date.now())
+        (Number.isNaN(Date.parse(args.publish_at)) || Date.parse(args.publish_at) < Date.now())
       ) {
-        throw new YtError(
-          "invalid_request",
-          "publish_at must be a future ISO 8601 date-time.",
-        );
+        throw new YtError("invalid_request", "publish_at must be a future ISO 8601 date-time.");
       }
       const a = await api(args.channel);
       const cur = await a.getVideo(args.video_id, ["snippet", "status"]);
@@ -410,11 +357,7 @@ export function registerVideoTools(server: McpServer, app: App) {
     },
     safe(async (args) => {
       const a = await api(args.channel);
-      const cur = await a.getVideo(args.video_id, [
-        "snippet",
-        "status",
-        "statistics",
-      ]);
+      const cur = await a.getVideo(args.video_id, ["snippet", "status", "statistics"]);
       const gate = await confirmGate(
         app,
         server,
@@ -430,12 +373,7 @@ export function registerVideoTools(server: McpServer, app: App) {
         () => a.yt.videos.delete({ id: args.video_id }),
         false,
       );
-      app.db.audit(
-        "video.deleted",
-        { title: cur.snippet?.title },
-        undefined,
-        args.video_id,
-      );
+      app.db.audit("video.deleted", { title: cur.snippet?.title }, undefined, args.video_id);
       return ok({ deleted: args.video_id, title: cur.snippet?.title });
     }),
   );
@@ -473,25 +411,47 @@ export function registerVideoTools(server: McpServer, app: App) {
         'Add or update the title and description shown to viewers in other languages, e.g. {"hi": {"title": "...", "description": "..."}}. Merged with existing translations. The video needs a default_language set (update_video).',
       inputSchema: {
         video_id: z.string(),
-        localizations: z.record(z.string(), z.object({ title: z.string().max(100), description: z.string().max(5000).optional() })),
+        localizations: z.record(
+          z.string(),
+          z.object({ title: z.string().max(100), description: z.string().max(5000).optional() }),
+        ),
         remove_languages: z.array(z.string()).optional(),
         channel: channelArg,
       },
-      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
     },
     safe(async (args) => {
       const a = await api(args.channel);
       const cur = await a.getVideo(args.video_id, ["snippet", "localizations"]);
       if (!cur.snippet?.defaultLanguage) {
-        throw new YtError("invalid_request", "Set the video’s default_language first (update_video), then add translations.");
+        throw new YtError(
+          "invalid_request",
+          "Set the video’s default_language first (update_video), then add translations.",
+        );
       }
-      const merged: Record<string, youtube_v3.Schema$VideoLocalization> = { ...(cur.localizations ?? {}) };
+      const merged: Record<string, youtube_v3.Schema$VideoLocalization> = {
+        ...(cur.localizations ?? {}),
+      };
       for (const [lang, l] of Object.entries(args.localizations)) {
         validateText(l.title, l.description ?? "");
         merged[lang] = { ...merged[lang], ...l };
       }
       for (const lang of args.remove_languages ?? []) delete merged[lang];
-      await a.call(COST.videosUpdate, "videos.update", () => a.yt.videos.update({ part: ["localizations"], requestBody: { id: args.video_id, localizations: merged } }), false);
+      await a.call(
+        COST.videosUpdate,
+        "videos.update",
+        () =>
+          a.yt.videos.update({
+            part: ["localizations"],
+            requestBody: { id: args.video_id, localizations: merged },
+          }),
+        false,
+      );
       return ok({ video_id: args.video_id, languages: Object.keys(merged) });
     }),
   );
@@ -500,8 +460,7 @@ export function registerVideoTools(server: McpServer, app: App) {
     "list_categories",
     {
       title: "List video categories",
-      description:
-        "YouTube video categories you can assign (id and name) for a region.",
+      description: "YouTube video categories you can assign (id and name) for a region.",
       inputSchema: {
         region_code: z.string().length(2).default("US"),
         channel: channelArg,

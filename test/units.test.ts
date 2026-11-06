@@ -2,11 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { checkChapters, isoDurationSeconds } from "../src/ai/brief.js";
 import { parseCaptions, timestampedText, toSrt } from "../src/ai/transcript.js";
-import {
-  upsertCodexToml,
-  upsertHermesYaml,
-  type LaunchSpec,
-} from "../src/clients.js";
+import { upsertCodexToml, upsertHermesYaml, type LaunchSpec } from "../src/clients.js";
 import { normaliseChunkSize } from "../src/config.js";
 import { canonicalJson, decrypt, encrypt } from "../src/crypto.js";
 import { classifyGoogleError } from "../src/errors.js";
@@ -30,10 +26,7 @@ const spec: LaunchSpec = {
 test("Hermes YAML: adds a youtube server under an existing mcp_servers block, keeping the rest", () => {
   const before = `model: x\nmcp_servers:\n  firecrawl:\n    command: npx\n    args:\n      - -y\n# trailing comment\nother: 1\n`;
   const after = upsertHermesYaml(before, spec);
-  assert.match(
-    after,
-    /mcp_servers:\n  youtube-channel:\n    command: "\/usr\/local\/bin\/node"/,
-  );
+  assert.match(after, /mcp_servers:\n  youtube-channel:\n    command: "\/usr\/local\/bin\/node"/);
   assert.match(after, /  firecrawl:\n    command: npx/);
   assert.match(after, /other: 1\n$/);
   // Idempotent: installing twice leaves one block.
@@ -50,19 +43,13 @@ test("Hermes YAML: creates mcp_servers when missing or inline-empty", () => {
     upsertHermesYaml("model: x\n", spec),
     /model: x\n\nmcp_servers:\n  youtube-channel:/,
   );
-  assert.match(
-    upsertHermesYaml("mcp_servers: {}\n", spec),
-    /^mcp_servers:\n  youtube-channel:/,
-  );
+  assert.match(upsertHermesYaml("mcp_servers: {}\n", spec), /^mcp_servers:\n  youtube-channel:/);
 });
 
 test("Codex TOML: upsert and remove the table", () => {
   const base = `model = "o5"\n\n[mcp_servers.other]\ncommand = "x"\n`;
   const added = upsertCodexToml(base, spec);
-  assert.match(
-    added,
-    /\[mcp_servers\.youtube-channel\]\ncommand = "\/usr\/local\/bin\/node"/,
-  );
+  assert.match(added, /\[mcp_servers\.youtube-channel\]\ncommand = "\/usr\/local\/bin\/node"/);
   assert.match(added, /\[mcp_servers\.youtube-channel\.env\]\nPATH = /);
   const again = upsertCodexToml(added, spec);
   assert.equal(again.match(/\[mcp_servers\.youtube-channel\]/g)?.length, 1);
@@ -96,17 +83,11 @@ test("templates: title format, footer, hashtags, tags", () => {
     store.get("clip"),
   );
   assert.equal(m.title, "Episode 1 | My Show");
-  assert.equal(
-    m.description,
-    "Hello\n\nSubscribe: https://x.y\n\n#Clip #MyShow",
-  );
+  assert.equal(m.description, "Hello\n\nSubscribe: https://x.y\n\n#Clip #MyShow");
   assert.deepEqual(m.tags, ["a", "show"]);
   assert.deepEqual(m.playlists, ["Episodes"]);
   // Does not double-apply the title suffix.
-  assert.equal(
-    applyTemplate({ title: "Ep | My Show" }, store.get("show")).title,
-    "Ep | My Show",
-  );
+  assert.equal(applyTemplate({ title: "Ep | My Show" }, store.get("show")).title, "Ep | My Show");
   assert.throws(() => applyTemplate({ title: "a <b>" }), /rejects/);
   const many = Array.from({ length: 80 }, (_, i) => `tag number ${i}`);
   assert.ok(tagsLength(applyTemplate({ title: "t", tags: many }).tags) <= 500);
@@ -119,16 +100,8 @@ test("templates: title format, footer, hashtags, tags", () => {
 test("chapters validation", () => {
   assert.deepEqual(checkChapters("No chapters here"), []);
   assert.deepEqual(checkChapters("0:00 Intro\n1:00 Part\n2:30 End"), []);
-  assert.ok(
-    checkChapters("0:05 Intro\n1:00 Part\n2:00 End").some((x) =>
-      x.includes("0:00"),
-    ),
-  );
-  assert.ok(
-    checkChapters("0:00 Intro\n0:05 Part\n2:00 End").some((x) =>
-      x.includes("10 seconds"),
-    ),
-  );
+  assert.ok(checkChapters("0:05 Intro\n1:00 Part\n2:00 End").some((x) => x.includes("0:00")));
+  assert.ok(checkChapters("0:00 Intro\n0:05 Part\n2:00 End").some((x) => x.includes("10 seconds")));
   assert.equal(isoDurationSeconds("PT1H2M3S"), 3723);
 });
 
@@ -171,14 +144,8 @@ test("error classification", () => {
     }).code,
     "auth_expired",
   );
-  assert.equal(
-    classifyGoogleError({ response: { status: 503, data: {} } }).retryable,
-    true,
-  );
-  assert.equal(
-    classifyGoogleError(new TypeError("fetch failed")).code,
-    "network",
-  );
+  assert.equal(classifyGoogleError({ response: { status: 503, data: {} } }).retryable, true);
+  assert.equal(classifyGoogleError(new TypeError("fetch failed")).code, "network");
 });
 
 test("private lock detection", () => {
@@ -189,10 +156,7 @@ test("private lock detection", () => {
     notify_subscribers: true,
   } as UploadMetadata;
   assert.ok(privateLockWarning(meta, { status: { privacyStatus: "private" } }));
-  assert.equal(
-    privateLockWarning(meta, { status: { privacyStatus: "public" } }),
-    null,
-  );
+  assert.equal(privateLockWarning(meta, { status: { privacyStatus: "public" } }), null);
   assert.equal(
     privateLockWarning(
       { ...meta, requested_privacy: "private" },
@@ -205,10 +169,7 @@ test("private lock detection", () => {
 test("crypto helpers", () => {
   const key = randomBytes(32);
   assert.equal(decrypt(key, encrypt(key, "refresh-token")), "refresh-token");
-  assert.equal(
-    canonicalJson({ b: 1, a: [2, { d: 1, c: undefined }] }),
-    '{"a":[2,{"d":1}],"b":1}',
-  );
+  assert.equal(canonicalJson({ b: 1, a: [2, { d: 1, c: undefined }] }), '{"a":[2,{"d":1}],"b":1}');
   assert.equal(normaliseChunkSize(16) % (256 * 1024), 0);
 });
 
@@ -219,22 +180,41 @@ test("config writers: tolerant matching and clean removal", () => {
   assert.equal(t.match(/youtube-channel\]/g)?.length, 1);
   assert.ok(!t.includes('"old"'));
   // Inline YAML entry and `mcp_servers: ~` are handled.
-  const inline = upsertHermesYaml('mcp_servers:\n  youtube-channel: {command: old}\n  other:\n    command: x\n', spec);
+  const inline = upsertHermesYaml(
+    "mcp_servers:\n  youtube-channel: {command: old}\n  other:\n    command: x\n",
+    spec,
+  );
   assert.equal(inline.match(/youtube-channel:/g)?.length, 1);
   assert.ok(!inline.includes("command: old"));
   assert.match(upsertHermesYaml("mcp_servers: ~\n", spec), /^mcp_servers:\n  youtube-channel:/);
   // Removing the only server leaves a valid empty mapping, not null.
-  assert.equal(upsertHermesYaml(upsertHermesYaml("a: 1\n", spec), null), "a: 1\n\nmcp_servers: {}\n");
+  assert.equal(
+    upsertHermesYaml(upsertHermesYaml("a: 1\n", spec), null),
+    "a: 1\n\nmcp_servers: {}\n",
+  );
   // Another server called "youtube" is never touched.
   const foreign = "mcp_servers:\n  youtube:\n    command: someone-else\n";
   assert.match(upsertHermesYaml(foreign, spec), /  youtube:\n    command: someone-else/);
 });
 
 test("SSRF guard blocks private, mapped and NAT64 addresses", () => {
-  for (const ip of ["127.0.0.1", "10.1.2.3", "169.254.169.254", "192.168.1.1", "::1", "fd00::1", "fe80::1", "::ffff:127.0.0.1", "::ffff:7f00:1", "64:ff9b::a9fe:a9fe", "2002::1"]) {
+  for (const ip of [
+    "127.0.0.1",
+    "10.1.2.3",
+    "169.254.169.254",
+    "192.168.1.1",
+    "::1",
+    "fd00::1",
+    "fe80::1",
+    "::ffff:127.0.0.1",
+    "::ffff:7f00:1",
+    "64:ff9b::a9fe:a9fe",
+    "2002::1",
+  ]) {
     assert.equal(isPrivateAddress(ip), true, ip);
   }
-  for (const ip of ["142.250.183.14", "2607:f8b0:4004:c07::64"]) assert.equal(isPrivateAddress(ip), false, ip);
+  for (const ip of ["142.250.183.14", "2607:f8b0:4004:c07::64"])
+    assert.equal(isPrivateAddress(ip), false, ip);
 });
 
 test("video updates merge into the current snippet and status", async () => {
@@ -242,8 +222,18 @@ test("video updates merge into the current snippet and status", async () => {
   const api = {
     getVideo: async () => ({
       id: "v1",
-      snippet: { title: "Old", description: "Long description", tags: ["a", "b"], categoryId: "22" },
-      status: { privacyStatus: "private", publishAt: "2030-01-01T00:00:00Z", selfDeclaredMadeForKids: false, embeddable: true },
+      snippet: {
+        title: "Old",
+        description: "Long description",
+        tags: ["a", "b"],
+        categoryId: "22",
+      },
+      status: {
+        privacyStatus: "private",
+        publishAt: "2030-01-01T00:00:00Z",
+        selfDeclaredMadeForKids: false,
+        embeddable: true,
+      },
     }),
     call: async (_c: number, _l: string, fn: () => unknown) => {
       fn();
@@ -269,11 +259,27 @@ test("analytics rows are mapped to named columns", async () => {
     auth: {
       request: async (o: { params: Record<string, unknown> }) => {
         params = o.params;
-        return { data: { columnHeaders: [{ name: "day" }, { name: "views" }], rows: [["2026-11-01", 120], ["2026-11-02", 98]] } };
+        return {
+          data: {
+            columnHeaders: [{ name: "day" }, { name: "views" }],
+            rows: [
+              ["2026-11-01", 120],
+              ["2026-11-02", 98],
+            ],
+          },
+        };
       },
     },
   };
-  const rows = await queryAnalytics(api as never, { startDate: "2026-11-01", endDate: "2026-11-02", metrics: "views", dimensions: "day" });
-  assert.deepEqual(rows, [{ day: "2026-11-01", views: 120 }, { day: "2026-11-02", views: 98 }]);
+  const rows = await queryAnalytics(api as never, {
+    startDate: "2026-11-01",
+    endDate: "2026-11-02",
+    metrics: "views",
+    dimensions: "day",
+  });
+  assert.deepEqual(rows, [
+    { day: "2026-11-01", views: 120 },
+    { day: "2026-11-02", views: 98 },
+  ]);
   assert.equal(params.ids, "channel==MINE");
 });

@@ -54,9 +54,7 @@ async function askYes(
   q: string,
   def = true,
 ): Promise<boolean> {
-  const a = (await rl.question(`${q} ${dim(def ? "[Y/n]" : "[y/N]")} `))
-    .trim()
-    .toLowerCase();
+  const a = (await rl.question(`${q} ${dim(def ? "[Y/n]" : "[y/N]")} `)).trim().toLowerCase();
   return a ? a.startsWith("y") : def;
 }
 
@@ -78,20 +76,12 @@ async function askSecret(rl: ReturnType<typeof createInterface>, q: string): Pro
   }
 }
 
-function parseClientSecretJson(
-  text: string,
-): { id: string; secret: string } | null {
+function parseClientSecretJson(text: string): { id: string; secret: string } | null {
   try {
-    const j = JSON.parse(text) as Record<
-      string,
-      { client_id?: string; client_secret?: string }
-    >;
+    const j = JSON.parse(text) as Record<string, { client_id?: string; client_secret?: string }>;
     const c =
-      j.installed ??
-      j.web ??
-      (j as unknown as { client_id?: string; client_secret?: string });
-    if (c?.client_id && c?.client_secret)
-      return { id: c.client_id, secret: c.client_secret };
+      j.installed ?? j.web ?? (j as unknown as { client_id?: string; client_secret?: string });
+    if (c?.client_id && c?.client_secret) return { id: c.client_id, secret: c.client_secret };
   } catch {
     /* not JSON */
   }
@@ -123,21 +113,14 @@ const GOOGLE_STEPS = [
 
 async function setupGoogle(app: App, rl: ReturnType<typeof createInterface>) {
   if (app.cfg.google.clientId && app.cfg.google.clientSecret) {
-    say(
-      `✓ Google OAuth client configured ${dim(`(${app.cfg.google.clientId.slice(0, 18)}…)`)}`,
-    );
+    say(`✓ Google OAuth client configured ${dim(`(${app.cfg.google.clientId.slice(0, 18)}…)`)}`);
     if (!(await askYes(rl, "Replace it with a different one?", false))) return;
   }
-  say(
-    bold("\nStep 1 · Google credentials") +
-      dim(" (one time, about 3 minutes, free)"),
-  );
+  say(bold("\nStep 1 · Google credentials") + dim(" (one time, about 3 minutes, free)"));
   say(
     "YouTube only lets apps upload through your own Google Cloud OAuth client, so you create one:\n",
   );
-  GOOGLE_STEPS.forEach(([t, url], i) =>
-    say(`  ${i + 1}. ${t}\n     ${dim(url)}`),
-  );
+  GOOGLE_STEPS.forEach(([t, url], i) => say(`  ${i + 1}. ${t}\n     ${dim(url)}`));
   say();
   if (await askYes(rl, "Open these pages in your browser now?", true))
     GOOGLE_STEPS.forEach(([, url]) => openBrowser(url));
@@ -148,9 +131,7 @@ async function setupGoogle(app: App, rl: ReturnType<typeof createInterface>) {
       "\nDrag the downloaded client_secret_….json file here (or paste the Client ID):",
     );
     if (!input) continue;
-    const path = expandPath(
-      input.replace(/^['"]|['"]$/g, "").replace(/\\ /g, " "),
-    );
+    const path = expandPath(input.replace(/^['"]|['"]$/g, "").replace(/\\ /g, " "));
     let creds = existsSync(path)
       ? parseClientSecretJson(readFileSync(path, "utf8"))
       : parseClientSecretJson(input);
@@ -184,28 +165,19 @@ async function connectInteractive(app: App) {
   say(dim(`If no browser opens, visit:\n${url}\n`));
   openBrowser(url);
   const row = await done;
-  say(
-    `✓ Connected ${bold(row.title ?? row.channel_id)} ${dim(row.handle ?? "")}`,
-  );
+  say(`✓ Connected ${bold(row.title ?? row.channel_id)} ${dim(row.handle ?? "")}`);
 }
 
-async function setupTranscription(
-  app: App,
-  rl: ReturnType<typeof createInterface>,
-) {
+async function setupTranscription(app: App, rl: ReturnType<typeof createInterface>) {
   say(bold("\nStep 3 · Automatic transcripts") + dim(" (optional)"));
-  say(
-    "Lets your AI transcribe a video to write titles, descriptions, chapters and captions.",
-  );
+  say("Lets your AI transcribe a video to write titles, descriptions, chapters and captions.");
   say(
     "Works with any OpenAI-compatible speech-to-text API (OpenAI, Azure OpenAI, Groq, local Whisper) and needs ffmpeg.",
   );
   if (
     !(await askYes(
       rl,
-      app.cfg.transcription.apiKey
-        ? "Change transcription settings?"
-        : "Set it up now?",
+      app.cfg.transcription.apiKey ? "Change transcription settings?" : "Set it up now?",
       false,
     ))
   )
@@ -217,10 +189,7 @@ async function setupTranscription(
   app.db.setSetting("transcribe_base_url", base.replace(/\/+$/, ""));
   app.db.setSetting("transcribe_model", model);
   say(
-    "✓ Saved." +
-      ((await hasFfmpeg())
-        ? ""
-        : " Install ffmpeg too (macOS: brew install ffmpeg)."),
+    "✓ Saved." + ((await hasFfmpeg()) ? "" : " Install ffmpeg too (macOS: brew install ffmpeg)."),
   );
 }
 
@@ -229,13 +198,9 @@ async function installClients(ids: string[], mode: "auto" | "npx" | "node") {
   const targets = ids.includes("all")
     ? CLIENTS.filter((c) => c.detect())
     : CLIENTS.filter((c) => ids.includes(c.id));
-  const unknown = ids.filter(
-    (i) => i !== "all" && !CLIENTS.some((c) => c.id === i),
-  );
+  const unknown = ids.filter((i) => i !== "all" && !CLIENTS.some((c) => c.id === i));
   if (unknown.length)
-    say(
-      `Unknown client(s): ${unknown.join(", ")}. Known: ${CLIENTS.map((c) => c.id).join(", ")}`,
-    );
+    say(`Unknown client(s): ${unknown.join(", ")}. Known: ${CLIENTS.map((c) => c.id).join(", ")}`);
   for (const c of targets) {
     try {
       say(`✓ ${c.install(spec)}`);
@@ -244,27 +209,20 @@ async function installClients(ids: string[], mode: "auto" | "npx" | "node") {
     }
   }
   if (!targets.length)
-    say(
-      "No supported AI apps found. Use `config` to print snippets for your client.",
-    );
+    say("No supported AI apps found. Use `config` to print snippets for your client.");
 }
 
 async function setup() {
   const app = await createApp();
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   try {
-    say(
-      bold(`\nYouTube Channel MCP · setup`) +
-        dim(`  (data: ${app.cfg.home})`),
-    );
+    say(bold(`\nYouTube Channel MCP · setup`) + dim(`  (data: ${app.cfg.home})`));
     await setupGoogle(app, rl);
 
     say(bold("\nStep 2 · Connect your YouTube channel"));
     const existing = app.channels.list();
     for (const c of existing)
-      say(
-        `  ✓ ${c.title} ${dim(c.status === "ok" ? "" : "(needs reconnect)")}`,
-      );
+      say(`  ✓ ${c.title} ${dim(c.status === "ok" ? "" : "(needs reconnect)")}`);
     if (
       !existing.length || existing.some((c) => c.status !== "ok")
         ? true
@@ -314,9 +272,7 @@ async function status() {
   say(bold(`${APP} ${VERSION}`));
   say(`Data folder:      ${app.cfg.home}`);
   say(`Token storage:    ${app.vault.kind}`);
-  say(
-    `Google OAuth:     ${app.cfg.google.clientId ? "configured" : "NOT configured (run setup)"}`,
-  );
+  say(`Google OAuth:     ${app.cfg.google.clientId ? "configured" : "NOT configured (run setup)"}`);
   say(
     `Transcription:    ${app.cfg.transcription.apiKey ? `${app.cfg.transcription.baseUrl} (${app.cfg.transcription.model})` : "off"}`,
   );
@@ -333,9 +289,7 @@ async function status() {
   if (jobs.length) {
     say("Recent uploads:");
     for (const j of jobs)
-      say(
-        `  ${j.status.padEnd(10)} ${j.video_id ? `https://youtu.be/${j.video_id}` : j.id}`,
-      );
+      say(`  ${j.status.padEnd(10)} ${j.video_id ? `https://youtu.be/${j.video_id}` : j.id}`);
   }
   app.db.close();
 }
@@ -343,37 +297,29 @@ async function status() {
 async function doctor() {
   const app = await createApp();
   const check = (okay: boolean, label: string, fix?: string) =>
-    say(
-      `${okay ? "✓" : "✗"} ${label}${!okay && fix ? dim(`\n    → ${fix}`) : ""}`,
-    );
+    say(`${okay ? "✓" : "✗"} ${label}${!okay && fix ? dim(`\n    → ${fix}`) : ""}`);
   const [major, minor] = process.versions.node.split(".").map(Number);
   check(
     major > 22 || (major === 22 && minor >= 13),
     `Node.js ${process.versions.node}`,
     "Install Node.js 22.13 or newer: https://nodejs.org",
   );
-  say(`✓ Token storage: ${app.vault.kind === "keychain" ? "OS keychain" : `encrypted file in ${app.cfg.home} (no OS keychain found)`}`);
+  say(
+    `✓ Token storage: ${app.vault.kind === "keychain" ? "OS keychain" : `encrypted file in ${app.cfg.home} (no OS keychain found)`}`,
+  );
   check(
     Boolean(app.cfg.google.clientId && app.cfg.google.clientSecret),
     "Google OAuth client",
     `Run: npx ${PACKAGE} setup`,
   );
   const chans = app.channels.list();
-  check(
-    chans.length > 0,
-    `${chans.length} channel(s) connected`,
-    `Run: npx ${PACKAGE} connect`,
-  );
+  check(chans.length > 0, `${chans.length} channel(s) connected`, `Run: npx ${PACKAGE} connect`);
   for (const c of chans) {
     try {
       await (await app.channels.api(c)).accessToken();
       check(true, `  ${c.title}: sign-in valid`);
     } catch (e) {
-      check(
-        false,
-        `  ${c.title}: ${(e as Error).message}`,
-        `Run: npx ${PACKAGE} connect`,
-      );
+      check(false, `  ${c.title}: ${(e as Error).message}`, `Run: npx ${PACKAGE} connect`);
     }
   }
   check(
@@ -408,11 +354,7 @@ async function main() {
   const [cmd, ...rest] = process.argv.slice(2);
   const flags = new Set(rest.filter((a) => a.startsWith("--")));
   const args = rest.filter((a) => !a.startsWith("--"));
-  const mode = flags.has("--npx")
-    ? "npx"
-    : flags.has("--node")
-      ? "node"
-      : "auto";
+  const mode = flags.has("--npx") ? "npx" : flags.has("--node") ? "node" : "auto";
   switch (cmd) {
     case undefined:
       if (process.stdin.isTTY) {

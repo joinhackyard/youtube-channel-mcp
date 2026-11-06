@@ -28,12 +28,7 @@ const VIDEO_TYPES: Record<string, string> = {
 
 export function expandPath(p: string): string {
   const t = p.trim();
-  const expanded =
-    t === "~"
-      ? homedir()
-      : t.startsWith("~/")
-        ? resolve(homedir(), t.slice(2))
-        : t;
+  const expanded = t === "~" ? homedir() : t.startsWith("~/") ? resolve(homedir(), t.slice(2)) : t;
   return isAbsolute(expanded) ? expanded : resolve(expanded);
 }
 
@@ -48,10 +43,7 @@ export interface LocalFile {
   contentType: string;
 }
 
-export async function inspectVideoFile(
-  path: string,
-  maxBytes: number,
-): Promise<LocalFile> {
+export async function inspectVideoFile(path: string, maxBytes: number): Promise<LocalFile> {
   const full = expandPath(path);
   let s;
   try {
@@ -72,19 +64,16 @@ export async function inspectVideoFile(
   if (contentType === "application/octet-stream") {
     const head = await readHead(full, 16);
     if (!looksLikeVideo(head)) {
-      throw new YtError(
-        "file_error",
-        `${full} does not look like a video file.`,
-        { hint: `Supported: ${Object.keys(VIDEO_TYPES).join(" ")}` },
-      );
+      throw new YtError("file_error", `${full} does not look like a video file.`, {
+        hint: `Supported: ${Object.keys(VIDEO_TYPES).join(" ")}`,
+      });
     }
   }
   return {
     path: full,
     size: s.size,
     mtimeMs: Math.floor(s.mtimeMs),
-    contentType:
-      contentType === "application/octet-stream" ? "video/*" : contentType,
+    contentType: contentType === "application/octet-stream" ? "video/*" : contentType,
   };
 }
 
@@ -148,8 +137,15 @@ export function isPrivateAddress(ip: string): boolean {
   if (isIP(ip) === 4) {
     const [a, b] = ip.split(".").map(Number);
     return (
-      a === 10 || a === 127 || a === 0 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) ||
-      (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127) || (a === 198 && (b === 18 || b === 19)) || a >= 224
+      a === 10 ||
+      a === 127 ||
+      a === 0 ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      (a === 100 && b >= 64 && b <= 127) ||
+      (a === 198 && (b === 18 || b === 19)) ||
+      a >= 224
     );
   }
   const v = ip.toLowerCase();
@@ -166,8 +162,13 @@ export function isPrivateAddress(ip: string): boolean {
     return true;
   }
   return (
-    v === "::1" || v === "::" || /^f[cd]/.test(v) || /^fe[89ab]/.test(v) || /^fe[c-f]/.test(v) ||
-    v.startsWith("2002:") || v.startsWith("ff")
+    v === "::1" ||
+    v === "::" ||
+    /^f[cd]/.test(v) ||
+    /^fe[89ab]/.test(v) ||
+    /^fe[c-f]/.test(v) ||
+    v.startsWith("2002:") ||
+    v.startsWith("ff")
   );
 }
 
@@ -179,19 +180,28 @@ async function resolvePublic(raw: string): Promise<{ url: URL; address: string; 
   } catch {
     throw new YtError("invalid_request", `Not a valid URL: ${raw}`);
   }
-  if (u.protocol !== "https:" && u.protocol !== "http:") throw new YtError("invalid_request", "Only http(s) URLs can be fetched.");
+  if (u.protocol !== "https:" && u.protocol !== "http:")
+    throw new YtError("invalid_request", "Only http(s) URLs can be fetched.");
   const host = u.hostname.replace(/^\[|\]$/g, "");
-  const addrs = isIP(host) ? [{ address: host, family: isIP(host) }] : await lookup(host, { all: true }).catch(() => []);
+  const addrs = isIP(host)
+    ? [{ address: host, family: isIP(host) }]
+    : await lookup(host, { all: true }).catch(() => []);
   if (!addrs.length) throw new YtError("invalid_request", `Cannot resolve ${host}.`);
   if (addrs.some((a) => isPrivateAddress(a.address))) {
-    throw new YtError("forbidden", "URLs pointing at private or internal addresses are not allowed.");
+    throw new YtError(
+      "forbidden",
+      "URLs pointing at private or internal addresses are not allowed.",
+    );
   }
   return { url: u, address: addrs[0].address, family: addrs[0].family };
 }
 
 const STALL_MS = 60_000;
 
-function request(target: { url: URL; address: string; family: number }, signal?: AbortSignal): Promise<IncomingMessage> {
+function request(
+  target: { url: URL; address: string; family: number },
+  signal?: AbortSignal,
+): Promise<IncomingMessage> {
   return new Promise((resolve, reject) => {
     const mod = target.url.protocol === "https:" ? https : http;
     const req = mod.get(
@@ -201,11 +211,17 @@ function request(target: { url: URL; address: string; family: number }, signal?:
         signal,
         // Pin the connection to the address that passed the private-network check.
         lookup: ((_h: string, opts: { all?: boolean }, cb: (...a: unknown[]) => void) =>
-          opts?.all ? cb(null, [{ address: target.address, family: target.family }]) : cb(null, target.address, target.family)) as never,
+          opts?.all
+            ? cb(null, [{ address: target.address, family: target.family }])
+            : cb(null, target.address, target.family)) as never,
       },
       resolve,
     );
-    req.setTimeout(STALL_MS, () => req.destroy(new YtError("network", "The download stalled for 60 seconds.", { retryable: true })));
+    req.setTimeout(STALL_MS, () =>
+      req.destroy(
+        new YtError("network", "The download stalled for 60 seconds.", { retryable: true }),
+      ),
+    );
     req.on("error", reject);
   });
 }
@@ -232,12 +248,17 @@ export async function downloadUrl(
   }
   if (!res || !res.statusCode || res.statusCode >= 300) {
     res?.resume();
-    throw new YtError("file_error", `Download failed: HTTP ${res?.statusCode ?? "no response"} from ${target.url.hostname}.`);
+    throw new YtError(
+      "file_error",
+      `Download failed: HTTP ${res?.statusCode ?? "no response"} from ${target.url.hostname}.`,
+    );
   }
   const contentType = res.headers["content-type"] ?? null;
   if (contentType && /^text\/html/i.test(contentType)) {
     res.resume();
-    throw new YtError("file_error", "That URL returned a web page, not a video file.", { hint: "Use a direct download link to the video file." });
+    throw new YtError("file_error", "That URL returned a web page, not a video file.", {
+      hint: "Use a direct download link to the video file.",
+    });
   }
   const total = Number(res.headers["content-length"]) || null;
   if (total && total > maxBytes) {
@@ -248,7 +269,8 @@ export async function downloadUrl(
   let lastTick = 0;
   res.on("data", (chunk: Buffer) => {
     got += chunk.length;
-    if (got > maxBytes) res!.destroy(new YtError("file_error", "The remote file is larger than the upload limit."));
+    if (got > maxBytes)
+      res!.destroy(new YtError("file_error", "The remote file is larger than the upload limit."));
     if (Date.now() - lastTick > 1000) {
       lastTick = Date.now();
       onProgress(got, total);
@@ -258,7 +280,11 @@ export async function downloadUrl(
     await pipeline(res, createWriteStream(dest));
   } catch (e) {
     await rm(dest, { force: true });
-    throw e instanceof YtError ? e : new YtError("network", `Download interrupted: ${(e as Error).message}`, { retryable: true });
+    throw e instanceof YtError
+      ? e
+      : new YtError("network", `Download interrupted: ${(e as Error).message}`, {
+          retryable: true,
+        });
   }
   onProgress(got, total);
   let name = target.url.pathname.split("/").pop() || "video";

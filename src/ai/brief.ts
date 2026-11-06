@@ -43,16 +43,13 @@ export function metadataBrief(input: {
       hashtags: ["#..."],
       chapters: [{ time: "0:00", label: "..." }],
       pinned_comment: "optional: a first comment that invites replies",
-      thumbnail_text:
-        "optional: 2 to 5 words for the thumbnail, not repeating the title",
+      thumbnail_text: "optional: 2 to 5 words for the thumbnail, not repeating the title",
     },
     template: input.template
       ? {
           name: input.template.name,
           title_format: input.template.title_format,
-          footer_added_automatically: Boolean(
-            input.template.description_footer,
-          ),
+          footer_added_automatically: Boolean(input.template.description_footer),
           tags_added_automatically: input.template.tags ?? [],
           hashtags_added_automatically: input.template.hashtags ?? [],
         }
@@ -77,21 +74,16 @@ export function isoDurationSeconds(d?: string | null): number | undefined {
 
 /** Validate a chapter list embedded in a description against YouTube's rules. */
 export function checkChapters(description: string): string[] {
-  const times = [
-    ...description.matchAll(/^\s*\(?((?:\d+:)?\d{1,2}:\d{2})\)?\s+\S/gm),
-  ].map((m) => {
+  const times = [...description.matchAll(/^\s*\(?((?:\d+:)?\d{1,2}:\d{2})\)?\s+\S/gm)].map((m) => {
     const p = m[1].split(":").map(Number);
     return p.length === 3 ? p[0] * 3600 + p[1] * 60 + p[2] : p[0] * 60 + p[1];
   });
   if (!times.length) return [];
   const issues: string[] = [];
-  if (times[0] !== 0)
-    issues.push("Chapters: the first timestamp must be 0:00.");
-  if (times.length < 3)
-    issues.push("Chapters: YouTube needs at least 3 timestamps.");
+  if (times[0] !== 0) issues.push("Chapters: the first timestamp must be 0:00.");
+  if (times.length < 3) issues.push("Chapters: YouTube needs at least 3 timestamps.");
   for (let i = 1; i < times.length; i++) {
-    if (times[i] <= times[i - 1])
-      issues.push("Chapters: timestamps must be in ascending order.");
+    if (times[i] <= times[i - 1]) issues.push("Chapters: timestamps must be in ascending order.");
     else if (times[i] - times[i - 1] < 10)
       issues.push("Chapters: each chapter must be at least 10 seconds long.");
   }

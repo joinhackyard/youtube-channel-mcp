@@ -12,8 +12,7 @@ import { buildServer } from "../src/mcp/server.js";
 let app: App;
 let client: Client;
 
-const text = (r: unknown) =>
-  (r as { content: { text: string }[] }).content[0]?.text ?? "";
+const text = (r: unknown) => (r as { content: { text: string }[] }).content[0]?.text ?? "";
 
 before(async () => {
   const home = mkdtempSync(join(tmpdir(), "ytp-mcp-"));
@@ -58,18 +57,29 @@ test("exposes the full tool set with annotations", async () => {
     "quota_status",
     "transcribe_video",
     "resume_upload",
-    "cancel_upload", "get_channel", "update_channel", "set_channel_banner", "set_watermark", "list_comments", "reply_to_comment", "moderate_comments", "delete_comment", "get_analytics", "update_playlist", "delete_playlist", "move_in_playlist", "delete_captions", "set_video_localizations",
+    "cancel_upload",
+    "get_channel",
+    "update_channel",
+    "set_channel_banner",
+    "set_watermark",
+    "list_comments",
+    "reply_to_comment",
+    "moderate_comments",
+    "delete_comment",
+    "get_analytics",
+    "update_playlist",
+    "delete_playlist",
+    "move_in_playlist",
+    "delete_captions",
+    "set_video_localizations",
   ])
     assert.ok(names.includes(n), `missing ${n}`);
+  assert.equal(tools.find((t) => t.name === "delete_video")?.annotations?.destructiveHint, true);
+  assert.equal(tools.find((t) => t.name === "list_my_videos")?.annotations?.readOnlyHint, true);
   assert.equal(
-    tools.find((t) => t.name === "delete_video")?.annotations?.destructiveHint,
+    tools.find((t) => t.name === "moderate_comments")?.annotations?.destructiveHint,
     true,
   );
-  assert.equal(
-    tools.find((t) => t.name === "list_my_videos")?.annotations?.readOnlyHint,
-    true,
-  );
-  assert.equal(tools.find((t) => t.name === "moderate_comments")?.annotations?.destructiveHint, true);
   assert.ok(tools.length >= 46, `expected the full channel tool set, got ${tools.length}`);
   const { prompts } = await client.listPrompts();
   assert.ok(prompts.some((p) => p.name === "publish_video"));
@@ -129,7 +139,10 @@ test("generate_metadata builds a brief from a transcript", async () => {
 });
 
 test("connect_channel returns a Google sign-in URL with PKCE and a loopback redirect", async () => {
-  const r = await client.callTool({ name: "connect_channel", arguments: { wait_seconds: 0, open_browser: false } });
+  const r = await client.callTool({
+    name: "connect_channel",
+    arguments: { wait_seconds: 0, open_browser: false },
+  });
   const data = JSON.parse(text(r).slice(text(r).indexOf("{")));
   const u = new URL(data.sign_in_url);
   assert.equal(u.hostname, "accounts.google.com");
@@ -144,17 +157,11 @@ test("confirmation gate: token is required, bound to the arguments, single use",
     server: { getClientCapabilities: () => undefined },
   } as never;
   const args = { video_id: "abc", privacy: "public" };
-  const first = await confirmGate(
-    app,
-    fakeServer,
-    "set_visibility",
-    args,
-    "Make abc PUBLIC",
-    { publicFacing: true },
-  );
+  const first = await confirmGate(app, fakeServer, "set_visibility", args, "Make abc PUBLIC", {
+    publicFacing: true,
+  });
   assert.ok(first && text(first).includes("CONFIRMATION REQUIRED"));
-  const token = JSON.parse(text(first).split("\n\n").pop()!)
-    .confirmation_token as string;
+  const token = JSON.parse(text(first).split("\n\n").pop()!).confirmation_token as string;
   await assert.rejects(
     confirmGate(
       app,
@@ -178,26 +185,16 @@ test("confirmation gate: token is required, bound to the arguments, single use",
     null,
   );
   await assert.rejects(
-    confirmGate(
-      app,
-      fakeServer,
-      "set_visibility",
-      { ...args, confirmation_token: token },
-      "s",
-      { publicFacing: true },
-    ),
+    confirmGate(app, fakeServer, "set_visibility", { ...args, confirmation_token: token }, "s", {
+      publicFacing: true,
+    }),
     /invalid or expired/,
   );
   // Private actions pass straight through under the default policy.
   assert.equal(
-    await confirmGate(
-      app,
-      fakeServer,
-      "upload_video",
-      { privacy: "private" },
-      "s",
-      { publicFacing: false },
-    ),
+    await confirmGate(app, fakeServer, "upload_video", { privacy: "private" }, "s", {
+      publicFacing: false,
+    }),
     null,
   );
 });

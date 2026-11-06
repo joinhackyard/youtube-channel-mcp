@@ -3,17 +3,8 @@ import { basename, extname, join } from "node:path";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { App } from "../../app.js";
-import {
-  checkChapters,
-  isoDurationSeconds,
-  metadataBrief,
-} from "../../ai/brief.js";
-import {
-  parseCaptions,
-  saveSrt,
-  timestampedText,
-  transcribeFile,
-} from "../../ai/transcript.js";
+import { checkChapters, isoDurationSeconds, metadataBrief } from "../../ai/brief.js";
+import { parseCaptions, saveSrt, timestampedText, transcribeFile } from "../../ai/transcript.js";
 import { YtError } from "../../errors.js";
 import { PRIVACY } from "../../google/youtube.js";
 import { COST } from "../../quota.js";
@@ -31,16 +22,14 @@ import { channelArg, confirmArg, confirmGate, ok, safe } from "../helpers.js";
 import { metadataShape } from "./upload.js";
 
 export function registerLibraryTools(server: McpServer, app: App) {
-  const api = async (channel?: string) =>
-    app.channels.api(app.channels.resolve(channel));
+  const api = async (channel?: string) => app.channels.api(app.channels.resolve(channel));
 
   // ---- playlists ---------------------------------------------------------------------------------
   server.registerTool(
     "list_playlists",
     {
       title: "List playlists",
-      description:
-        "All playlists on the channel with id, title, privacy and video count.",
+      description: "All playlists on the channel with id, title, privacy and video count.",
       inputSchema: { channel: channelArg },
       annotations: { readOnlyHint: true, openWorldHint: true },
     },
@@ -77,12 +66,7 @@ export function registerLibraryTools(server: McpServer, app: App) {
       },
     },
     safe(async ({ title, description, privacy, channel }) => {
-      const p = await createPlaylist(
-        await api(channel),
-        title,
-        description,
-        privacy,
-      );
+      const p = await createPlaylist(await api(channel), title, description, privacy);
       return ok({
         id: p.id,
         title: p.snippet?.title,
@@ -105,9 +89,7 @@ export function registerLibraryTools(server: McpServer, app: App) {
         create_if_missing: z
           .boolean()
           .default(false)
-          .describe(
-            "Create a private playlist with this title if none exists.",
-          ),
+          .describe("Create a private playlist with this title if none exists."),
         channel: channelArg,
       },
       annotations: {
@@ -117,28 +99,25 @@ export function registerLibraryTools(server: McpServer, app: App) {
         openWorldHint: true,
       },
     },
-    safe(
-      async ({ video_id, playlist, position, create_if_missing, channel }) => {
-        const a = await api(channel);
-        const r = await resolvePlaylists(a, [playlist], create_if_missing);
-        if (!r.ids.length)
-          throw new YtError("not_found", `No playlist titled "${playlist}".`, {
-            hint: "Use list_playlists, or pass create_if_missing: true.",
-          });
-        return ok({
-          ...(await addToPlaylist(a, r.ids[0], video_id, position)),
-          created: r.created.length > 0,
+    safe(async ({ video_id, playlist, position, create_if_missing, channel }) => {
+      const a = await api(channel);
+      const r = await resolvePlaylists(a, [playlist], create_if_missing);
+      if (!r.ids.length)
+        throw new YtError("not_found", `No playlist titled "${playlist}".`, {
+          hint: "Use list_playlists, or pass create_if_missing: true.",
         });
-      },
-    ),
+      return ok({
+        ...(await addToPlaylist(a, r.ids[0], video_id, position)),
+        created: r.created.length > 0,
+      });
+    }),
   );
 
   server.registerTool(
     "remove_from_playlist",
     {
       title: "Remove a video from a playlist",
-      description:
-        "Remove a video from a playlist (the video itself is not deleted).",
+      description: "Remove a video from a playlist (the video itself is not deleted).",
       inputSchema: {
         video_id: z.string(),
         playlist: z.string().describe("Playlist id or exact title."),
@@ -154,8 +133,7 @@ export function registerLibraryTools(server: McpServer, app: App) {
     safe(async ({ video_id, playlist, channel }) => {
       const a = await api(channel);
       const r = await resolvePlaylists(a, [playlist], false);
-      if (!r.ids.length)
-        throw new YtError("not_found", `No playlist titled "${playlist}".`);
+      if (!r.ids.length) throw new YtError("not_found", `No playlist titled "${playlist}".`);
       const items = await a.call(COST.list, "playlistItems.list", () =>
         a.yt.playlistItems.list({
           part: ["id"],
@@ -164,11 +142,8 @@ export function registerLibraryTools(server: McpServer, app: App) {
           maxResults: 50,
         }),
       );
-      const ids = (items.items ?? [])
-        .map((i) => i.id)
-        .filter((x): x is string => Boolean(x));
-      if (!ids.length)
-        throw new YtError("not_found", "That video is not in this playlist.");
+      const ids = (items.items ?? []).map((i) => i.id).filter((x): x is string => Boolean(x));
+      if (!ids.length) throw new YtError("not_found", "That video is not in this playlist.");
       for (const id of ids)
         await a.call(
           COST.playlistItemsDelete,
@@ -184,7 +159,8 @@ export function registerLibraryTools(server: McpServer, app: App) {
     "update_playlist",
     {
       title: "Edit a playlist",
-      description: "Rename a playlist, change its description or privacy. Making it public or unlisted needs the user’s confirmation.",
+      description:
+        "Rename a playlist, change its description or privacy. Making it public or unlisted needs the user’s confirmation.",
       inputSchema: {
         playlist: z.string().describe("Playlist id or exact title."),
         title: z.string().min(1).max(150).optional(),
@@ -193,15 +169,30 @@ export function registerLibraryTools(server: McpServer, app: App) {
         channel: channelArg,
         confirmation_token: confirmArg,
       },
-      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
     },
     safe(async (args) => {
       const a = await api(args.channel);
       const all = await listPlaylists(a);
-      const p = all.find((x) => x.id === args.playlist || x.snippet?.title?.toLowerCase() === args.playlist.toLowerCase());
+      const p = all.find(
+        (x) =>
+          x.id === args.playlist || x.snippet?.title?.toLowerCase() === args.playlist.toLowerCase(),
+      );
       if (!p?.id) throw new YtError("not_found", `No playlist "${args.playlist}".`);
       if (args.privacy && args.privacy !== "private" && args.privacy !== p.status?.privacyStatus) {
-        const gate = await confirmGate(app, server, "update_playlist", args, `Make playlist "${p.snippet?.title}" ${args.privacy.toUpperCase()}.`, { publicFacing: true });
+        const gate = await confirmGate(
+          app,
+          server,
+          "update_playlist",
+          args,
+          `Make playlist "${p.snippet?.title}" ${args.privacy.toUpperCase()}.`,
+          { publicFacing: true },
+        );
         if (gate) return gate;
       }
       const upd = await a.call(
@@ -212,7 +203,11 @@ export function registerLibraryTools(server: McpServer, app: App) {
             part: ["snippet", "status"],
             requestBody: {
               id: p.id,
-              snippet: { title: args.title ?? p.snippet?.title, description: args.description ?? p.snippet?.description, defaultLanguage: p.snippet?.defaultLanguage },
+              snippet: {
+                title: args.title ?? p.snippet?.title,
+                description: args.description ?? p.snippet?.description,
+                defaultLanguage: p.snippet?.defaultLanguage,
+              },
               status: { privacyStatus: args.privacy ?? p.status?.privacyStatus },
             },
           }),
@@ -226,17 +221,39 @@ export function registerLibraryTools(server: McpServer, app: App) {
     "delete_playlist",
     {
       title: "Delete a playlist",
-      description: "Delete a playlist (the videos in it are not deleted). Needs the user’s confirmation.",
-      inputSchema: { playlist: z.string().describe("Playlist id or exact title."), channel: channelArg, confirmation_token: confirmArg },
-      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
+      description:
+        "Delete a playlist (the videos in it are not deleted). Needs the user’s confirmation.",
+      inputSchema: {
+        playlist: z.string().describe("Playlist id or exact title."),
+        channel: channelArg,
+        confirmation_token: confirmArg,
+      },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
     },
     safe(async (args) => {
       const a = await api(args.channel);
       const r = await resolvePlaylists(a, [args.playlist], false);
       if (!r.ids.length) throw new YtError("not_found", `No playlist "${args.playlist}".`);
-      const gate = await confirmGate(app, server, "delete_playlist", args, `Delete playlist "${args.playlist}" (${r.ids[0]}). Videos stay on the channel.`, { publicFacing: false, destructive: true });
+      const gate = await confirmGate(
+        app,
+        server,
+        "delete_playlist",
+        args,
+        `Delete playlist "${args.playlist}" (${r.ids[0]}). Videos stay on the channel.`,
+        { publicFacing: false, destructive: true },
+      );
       if (gate) return gate;
-      await a.call(COST.playlistsDelete, "playlists.delete", () => a.yt.playlists.delete({ id: r.ids[0] }), false);
+      await a.call(
+        COST.playlistsDelete,
+        "playlists.delete",
+        () => a.yt.playlists.delete({ id: r.ids[0] }),
+        false,
+      );
       app.db.audit("playlist.deleted", { playlist: r.ids[0] });
       return ok({ deleted: r.ids[0] });
     }),
@@ -246,21 +263,45 @@ export function registerLibraryTools(server: McpServer, app: App) {
     "move_in_playlist",
     {
       title: "Reorder a playlist",
-      description: "Move a video to a new position in a playlist (0 = first). Works for playlists sorted manually.",
-      inputSchema: { playlist: z.string(), video_id: z.string(), position: z.number().int().min(0), channel: channelArg },
-      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      description:
+        "Move a video to a new position in a playlist (0 = first). Works for playlists sorted manually.",
+      inputSchema: {
+        playlist: z.string(),
+        video_id: z.string(),
+        position: z.number().int().min(0),
+        channel: channelArg,
+      },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
     },
     safe(async ({ playlist, video_id, position, channel }) => {
       const a = await api(channel);
       const r = await resolvePlaylists(a, [playlist], false);
       if (!r.ids.length) throw new YtError("not_found", `No playlist "${playlist}".`);
-      const items = await a.call(COST.list, "playlistItems.list", () => a.yt.playlistItems.list({ part: ["id", "snippet"], playlistId: r.ids[0], videoId: video_id }));
+      const items = await a.call(COST.list, "playlistItems.list", () =>
+        a.yt.playlistItems.list({
+          part: ["id", "snippet"],
+          playlistId: r.ids[0],
+          videoId: video_id,
+        }),
+      );
       const item = items.items?.[0];
       if (!item?.id) throw new YtError("not_found", "That video is not in this playlist.");
       await a.call(
         COST.playlistItemsUpdate,
         "playlistItems.update",
-        () => a.yt.playlistItems.update({ part: ["snippet"], requestBody: { id: item.id, snippet: { playlistId: r.ids[0], resourceId: item.snippet?.resourceId, position } } }),
+        () =>
+          a.yt.playlistItems.update({
+            part: ["snippet"],
+            requestBody: {
+              id: item.id,
+              snippet: { playlistId: r.ids[0], resourceId: item.snippet?.resourceId, position },
+            },
+          }),
         false,
       );
       return ok({ playlist_id: r.ids[0], video_id, position });
@@ -283,8 +324,7 @@ export function registerLibraryTools(server: McpServer, app: App) {
     safe(async ({ playlist, max_results, page_token, channel }) => {
       const a = await api(channel);
       const r = await resolvePlaylists(a, [playlist], false);
-      if (!r.ids.length)
-        throw new YtError("not_found", `No playlist titled "${playlist}".`);
+      if (!r.ids.length) throw new YtError("not_found", `No playlist titled "${playlist}".`);
       const page = await a.call(COST.list, "playlistItems.list", () =>
         a.yt.playlistItems.list({
           part: ["snippet", "contentDetails", "status"],
@@ -312,8 +352,7 @@ export function registerLibraryTools(server: McpServer, app: App) {
     "list_captions",
     {
       title: "List caption tracks",
-      description:
-        "Caption tracks on a video (language, name, auto-generated or uploaded, draft).",
+      description: "Caption tracks on a video (language, name, auto-generated or uploaded, draft).",
       inputSchema: { video_id: z.string(), channel: channelArg },
       annotations: { readOnlyHint: true, openWorldHint: true },
     },
@@ -344,20 +383,13 @@ export function registerLibraryTools(server: McpServer, app: App) {
       inputSchema: {
         video_id: z.string(),
         file_path: z.string().optional(),
-        content: z
-          .string()
-          .optional()
-          .describe("Caption file contents, e.g. SRT text."),
-        language: z
-          .string()
-          .default("en")
-          .describe('BCP-47 language, e.g. "en", "hi", "es".'),
-        name: z
-          .string()
-          .optional()
-          .describe("Track name shown to viewers; usually empty."),
+        content: z.string().optional().describe("Caption file contents, e.g. SRT text."),
+        language: z.string().default("en").describe('BCP-47 language, e.g. "en", "hi", "es".'),
+        name: z.string().optional().describe("Track name shown to viewers; usually empty."),
         is_draft: z.boolean().default(false),
-        replace_existing: z.boolean().default(false)
+        replace_existing: z
+          .boolean()
+          .default(false)
           .describe(
             "Overwrite an existing uploaded track with the same language and name (default: add a new track).",
           ),
@@ -372,10 +404,7 @@ export function registerLibraryTools(server: McpServer, app: App) {
     },
     safe(async ({ channel, video_id, ...c }) => {
       if (c.file_path && !existsSync(expandPath(c.file_path)))
-        throw new YtError(
-          "file_error",
-          `Captions file not found: ${expandPath(c.file_path)}`,
-        );
+        throw new YtError("file_error", `Captions file not found: ${expandPath(c.file_path)}`);
       return ok(await uploadCaptions(await api(channel), video_id, c));
     }),
   );
@@ -384,15 +413,33 @@ export function registerLibraryTools(server: McpServer, app: App) {
     "delete_captions",
     {
       title: "Delete a caption track",
-      description: "Delete an uploaded caption track (see list_captions for ids). Needs the user’s confirmation.",
+      description:
+        "Delete an uploaded caption track (see list_captions for ids). Needs the user’s confirmation.",
       inputSchema: { caption_id: z.string(), channel: channelArg, confirmation_token: confirmArg },
-      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
     },
     safe(async (args) => {
-      const gate = await confirmGate(app, server, "delete_captions", args, `Delete caption track ${args.caption_id}.`, { publicFacing: false, destructive: true });
+      const gate = await confirmGate(
+        app,
+        server,
+        "delete_captions",
+        args,
+        `Delete caption track ${args.caption_id}.`,
+        { publicFacing: false, destructive: true },
+      );
       if (gate) return gate;
       const a = await api(args.channel);
-      await a.call(COST.captionsDelete, "captions.delete", () => a.yt.captions.delete({ id: args.caption_id }), false);
+      await a.call(
+        COST.captionsDelete,
+        "captions.delete",
+        () => a.yt.captions.delete({ id: args.caption_id }),
+        false,
+      );
       return ok({ deleted: args.caption_id });
     }),
   );
@@ -423,10 +470,7 @@ export function registerLibraryTools(server: McpServer, app: App) {
         "Transcribe a video file on this computer with any OpenAI-compatible speech-to-text API (needs ffmpeg and a configured key). Saves an .srt you can pass to upload_video or upload_captions, and returns a timestamped transcript for writing metadata and chapters.",
       inputSchema: {
         file_path: z.string(),
-        language: z
-          .string()
-          .optional()
-          .describe('Spoken language hint, e.g. "en".'),
+        language: z.string().optional().describe('Spoken language hint, e.g. "en".'),
       },
       annotations: {
         readOnlyHint: false,
@@ -458,34 +502,20 @@ export function registerLibraryTools(server: McpServer, app: App) {
       description:
         "Collect everything needed to write a strong title, description, chapters and tags: the transcript with timestamps (from text you pass, a .srt/.vtt/.txt file, an uploaded video’s captions, or by transcribing a local file), the chosen template and YouTube’s rules. You then write the metadata and check it with preview_metadata.",
       inputSchema: {
-        transcript: z
-          .string()
-          .optional()
-          .describe("Transcript or notes as plain text."),
+        transcript: z.string().optional().describe("Transcript or notes as plain text."),
         transcript_path: z
           .string()
           .optional()
           .describe(".srt, .vtt or .txt file on this computer."),
-        video_id: z
-          .string()
-          .optional()
-          .describe("Use the captions of this video on your channel."),
+        video_id: z.string().optional().describe("Use the captions of this video on your channel."),
         file_path: z
           .string()
           .optional()
-          .describe(
-            "Transcribe this local video first (needs transcription configured).",
-          ),
+          .describe("Transcribe this local video first (needs transcription configured)."),
         template: z.string().optional(),
         format: z.enum(["video", "short"]).default("video"),
-        language: z
-          .string()
-          .optional()
-          .describe("Language to write the metadata in."),
-        notes: z
-          .string()
-          .optional()
-          .describe("Anything else: audience, links to include, tone."),
+        language: z.string().optional().describe("Language to write the metadata in."),
+        notes: z.string().optional().describe("Anything else: audience, links to include, tone."),
         channel: channelArg,
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
@@ -496,8 +526,7 @@ export function registerLibraryTools(server: McpServer, app: App) {
       if (args.transcript) text = args.transcript;
       else if (args.transcript_path) {
         const p = expandPath(args.transcript_path);
-        if (!existsSync(p))
-          throw new YtError("file_error", `Transcript not found: ${p}`);
+        if (!existsSync(p)) throw new YtError("file_error", `Transcript not found: ${p}`);
         const segs = parseCaptions(readFileSync(p, "utf8"));
         text = timestampedText(segs);
         duration = segs.at(-1)?.end || undefined;
@@ -505,14 +534,9 @@ export function registerLibraryTools(server: McpServer, app: App) {
         const a = await api(args.channel);
         const v = await a.getVideo(args.video_id, ["contentDetails"]);
         duration = isoDurationSeconds(v.contentDetails?.duration);
-        text = timestampedText(
-          parseCaptions((await downloadCaptions(a, args.video_id)).srt),
-        );
+        text = timestampedText(parseCaptions((await downloadCaptions(a, args.video_id)).srt));
       } else if (args.file_path) {
-        const f = await inspectVideoFile(
-          args.file_path,
-          app.cfg.maxUploadBytes,
-        );
+        const f = await inspectVideoFile(args.file_path, app.cfg.maxUploadBytes);
         const segs = await transcribeFile(app.cfg, f.path, args.language);
         text = timestampedText(segs);
         duration = segs.at(-1)?.end;
@@ -525,9 +549,7 @@ export function registerLibraryTools(server: McpServer, app: App) {
         metadataBrief({
           transcript: text,
           durationSeconds: duration ? Math.round(duration) : undefined,
-          template: args.template
-            ? app.templates.get(args.template)
-            : undefined,
+          template: args.template ? app.templates.get(args.template) : undefined,
           format: args.format,
           language: args.language,
           notes: args.notes,
@@ -546,10 +568,7 @@ export function registerLibraryTools(server: McpServer, app: App) {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     safe(async (args) => {
-      const m = applyTemplate(
-        args,
-        args.template ? app.templates.get(args.template) : undefined,
-      );
+      const m = applyTemplate(args, args.template ? app.templates.get(args.template) : undefined);
       const issues = checkChapters(m.description);
       return ok({
         ...m,
@@ -592,9 +611,7 @@ export function registerLibraryTools(server: McpServer, app: App) {
         openWorldHint: false,
       },
     },
-    safe(async (t) =>
-      ok({ saved: app.templates.save(t), template: app.templates.get(t.name) }),
-    ),
+    safe(async (t) => ok({ saved: app.templates.save(t), template: app.templates.get(t.name) })),
   );
 
   server.registerTool(
