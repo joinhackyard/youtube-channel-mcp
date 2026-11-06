@@ -56,7 +56,7 @@
     "@napi-rs/keyring": "^2.1.2"
   },
   "devDependencies": {
-    "@types/node": "^22.19.0",
+    "@types/node": "^26.6.6",
     "typescript": "^5.9.3",
     "prettier": "^3.9.10"
   },
