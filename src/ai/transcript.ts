@@ -1,8 +1,9 @@
 import { spawn } from "node:child_process";
-import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { basename, join } from "node:path";
+import { join } from "node:path";
 import type { Config } from "../config.js";
+import { AI_NOT_CONFIGURED_HINT, resolveModel, transcribeAudio } from "./providers.js";
 import { YtError } from "../errors.js";
 
 export interface Segment {
@@ -102,18 +103,17 @@ export async function hasFfmpeg(): Promise<boolean> {
 const SEGMENT_SECONDS = 1200; // 20 min of 32 kbps mono MP3 ≈ 4.8 MB, well under the 25 MB API limit.
 
 /**
- * Transcribe a local video with any OpenAI-compatible speech-to-text endpoint
- * (OpenAI, Azure OpenAI v1, Groq, a local whisper server...). Needs ffmpeg on PATH.
+ * Transcribe a local video with the configured transcription model (OpenAI or Azure Whisper,
+ * Groq, Gemini, or any OpenAI-compatible server). Needs ffmpeg on PATH.
  */
 export async function transcribeFile(
   cfg: Config,
   videoPath: string,
   language?: string,
 ): Promise<Segment[]> {
-  const { apiKey, baseUrl, model } = cfg.transcription;
-  if (!apiKey) {
+  if (!resolveModel(cfg.ai, "transcribe")) {
     throw new YtError("not_configured", "Transcription is not configured.", {
-      hint: "Set TRANSCRIBE_API_KEY (or OPENAI_API_KEY), optionally TRANSCRIBE_BASE_URL and TRANSCRIBE_MODEL, or run `npx @joinhackyard/youtube-channel-mcp setup`. Or pass an existing transcript or .srt instead.",
+      hint: `${AI_NOT_CONFIGURED_HINT} Or pass an existing transcript or .srt instead.`,
     });
   }
   if (!(await hasFfmpeg())) {
@@ -154,31 +154,7 @@ export async function transcribeFile(
     const parts = (await readdir(dir)).filter((f) => f.endsWith(".mp3")).sort();
     const all: Segment[] = [];
     for (const [i, part] of parts.entries()) {
-      const form = new FormData();
-      form.append(
-        "file",
-        new Blob([await readFile(join(dir, part))], { type: "audio/mpeg" }),
-        basename(part),
-      );
-      form.append("model", model);
-      form.append("response_format", "verbose_json");
-      if (language) form.append("language", language);
-      const res = await fetch(`${baseUrl}/audio/transcriptions`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "api-key": apiKey },
-        body: form,
-      });
-      if (!res.ok) {
-        const body = (await res.text()).slice(0, 400);
-        throw new YtError(
-          res.status === 401 ? "not_configured" : "server_error",
-          `Transcription failed (HTTP ${res.status}): ${body}`,
-        );
-      }
-      const data = (await res.json()) as {
-        text?: string;
-        segments?: { start: number; end: number; text: string }[];
-      };
+      const data = (await transcribeAudio(cfg.ai, join(dir, part), language))!;
       const offset = i * SEGMENT_SECONDS;
       if (data.segments?.length) {
         for (const s of data.segments)

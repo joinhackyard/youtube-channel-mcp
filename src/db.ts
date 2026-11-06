@@ -69,6 +69,52 @@ const MIGRATIONS: string[] = [
     detail text
   );
   `,
+  // 2: remember which OAuth client connected each channel (refresh tokens only work with that client)
+  `alter table channels add column client_id text;`,
+  // 3: A/B tests (title / thumbnail / description rotation)
+  `
+  create table experiments(
+    id text primary key,
+    channel_row_id text not null,
+    video_id text not null,
+    status text not null,
+    metric text not null,
+    starts_on text not null,
+    ends_on text not null,
+    schedule text not null,
+    current_variant text,
+    live_thumb text,
+    failures integer not null default 0,
+    auto_apply integer not null default 1,
+    winner text,
+    result text,
+    error text,
+    created_at integer not null,
+    updated_at integer not null,
+    finished_at integer
+  );
+  create index experiments_status on experiments(status);
+  create unique index experiments_one_active_per_video on experiments(video_id)
+    where status in ('scheduled', 'running', 'collecting');
+  create table experiment_variants(
+    experiment_id text not null references experiments(id) on delete cascade,
+    label text not null,
+    title text,
+    description text,
+    thumbnail_path text,
+    is_original integer not null default 0,
+    primary key(experiment_id, label)
+  );
+  create table experiment_exposures(
+    id integer primary key autoincrement,
+    experiment_id text not null references experiments(id) on delete cascade,
+    label text not null,
+    day text not null,
+    applied_at integer not null,
+    clean integer not null,
+    unique(experiment_id, day)
+  );
+  `,
 ];
 
 export class Db {

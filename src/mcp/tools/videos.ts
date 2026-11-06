@@ -28,6 +28,7 @@ interface VideoChanges {
   embeddable?: boolean;
   license?: "youtube" | "creativeCommon";
   public_stats_viewable?: boolean;
+  has_paid_product_placement?: boolean;
   privacy?: Privacy;
   publish_at?: string | null;
 }
@@ -52,7 +53,9 @@ export async function applyVideoChanges(api: YouTubeApi, videoId: string, c: Vid
     "privacy",
     "publish_at",
   ].some((k) => k in c && c[k as keyof VideoChanges] !== undefined);
-  if (!touchesSnippet && !touchesStatus) throw new YtError("invalid_request", "Nothing to change.");
+  const touchesPaid = c.has_paid_product_placement !== undefined;
+  if (!touchesSnippet && !touchesStatus && !touchesPaid)
+    throw new YtError("invalid_request", "Nothing to change.");
   const body: youtube_v3.Schema$Video = { id: videoId };
   const parts: string[] = [];
   if (touchesSnippet) {
@@ -86,6 +89,10 @@ export async function applyVideoChanges(api: YouTubeApi, videoId: string, c: Vid
       publicStatsViewable: c.public_stats_viewable ?? s.publicStatsViewable,
     };
     parts.push("status");
+  }
+  if (touchesPaid) {
+    body.paidProductPlacementDetails = { hasPaidProductPlacement: c.has_paid_product_placement };
+    parts.push("paidProductPlacementDetails");
   }
   const updated = await api.call(
     COST.videosUpdate,
@@ -209,6 +216,7 @@ export function registerVideoTools(server: McpServer, app: App) {
         embeddable: z.boolean().optional(),
         license: z.enum(["youtube", "creativeCommon"]).optional(),
         public_stats_viewable: z.boolean().optional(),
+        has_paid_product_placement: z.boolean().optional().describe("Paid promotion disclosure."),
         privacy: z.enum(PRIVACY).optional(),
         publish_at: z
           .string()

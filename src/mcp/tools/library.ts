@@ -4,6 +4,9 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { App } from "../../app.js";
 import { checkChapters, isoDurationSeconds, metadataBrief } from "../../ai/brief.js";
+import { resolveModel } from "../../ai/providers.js";
+import { seoCheck } from "../../growth.js";
+import { draftMetadata } from "../../ai/writer.js";
 import { parseCaptions, saveSrt, timestampedText, transcribeFile } from "../../ai/transcript.js";
 import { YtError } from "../../errors.js";
 import { PRIVACY } from "../../google/youtube.js";
@@ -498,9 +501,9 @@ export function registerLibraryTools(server: McpServer, app: App) {
   server.registerTool(
     "generate_metadata",
     {
-      title: "Brief for writing metadata",
+      title: "Write titles, description, chapters and tags",
       description:
-        "Collect everything needed to write a strong title, description, chapters and tags: the transcript with timestamps (from text you pass, a .srt/.vtt/.txt file, an uploaded video’s captions, or by transcribing a local file), the chosen template and YouTube’s rules. You then write the metadata and check it with preview_metadata.",
+        "Gets the transcript with timestamps (from text you pass, a .srt/.vtt/.txt file, an uploaded video’s captions, or by transcribing a local file). When an AI writing model is configured (Azure OpenAI, OpenAI…), it returns a finished draft: 3 titles, description with chapters, tags, hashtags, pinned comment and thumbnail text, already merged with the template and checked against YouTube’s limits. Otherwise (or with draft: false) it returns a brief for you to write from. Show the draft to the user before using it.",
       inputSchema: {
         transcript: z.string().optional().describe("Transcript or notes as plain text."),
         transcript_path: z
@@ -516,6 +519,12 @@ export function registerLibraryTools(server: McpServer, app: App) {
         format: z.enum(["video", "short"]).default("video"),
         language: z.string().optional().describe("Language to write the metadata in."),
         notes: z.string().optional().describe("Anything else: audience, links to include, tone."),
+        draft: z
+          .boolean()
+          .optional()
+          .describe(
+            "Have the configured AI model write the metadata (default: yes when one is configured).",
+          ),
         channel: channelArg,
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
@@ -545,16 +554,22 @@ export function registerLibraryTools(server: McpServer, app: App) {
           "invalid_request",
           "Pass transcript, transcript_path, video_id or file_path.",
         );
-      return ok(
-        metadataBrief({
-          transcript: text,
-          durationSeconds: duration ? Math.round(duration) : undefined,
-          template: args.template ? app.templates.get(args.template) : undefined,
-          format: args.format,
-          language: args.language,
-          notes: args.notes,
-        }),
-      );
+      const input = {
+        transcript: text,
+        durationSeconds: duration ? Math.round(duration) : undefined,
+        template: args.template ? app.templates.get(args.template) : undefined,
+        format: args.format,
+        language: args.language,
+        notes: args.notes,
+      };
+      if (args.draft !== false && resolveModel(app.cfg.ai, "text")) {
+        const result = await draftMetadata(app.cfg.ai, input);
+        return ok(
+          result,
+          "AI draft below. Show it to the user and adjust; `ready_to_use` is exactly what upload_video / update_video would send (template applied).",
+        );
+      }
+      return ok(metadataBrief(input));
     }),
   );
 
@@ -563,8 +578,15 @@ export function registerLibraryTools(server: McpServer, app: App) {
     {
       title: "Preview final metadata",
       description:
-        "Show exactly what would be sent to YouTube (title, description, tags, playlists) after applying a template, and check it against YouTube’s limits and chapter rules. No API call, no quota.",
-      inputSchema: metadataShape,
+        "Show exactly what would be sent to YouTube (title, description, tags, playlists) after applying a template, check it against YouTube’s limits and chapter rules, and score its SEO/packaging (0-100 with fixes). No API call, no quota.",
+      inputSchema: {
+        ...metadataShape,
+        keyword: z.string().optional().describe("Main search phrase, for the SEO score."),
+        duration_seconds: z
+          .number()
+          .optional()
+          .describe("Video length, so the SEO score can check chapters."),
+      },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     safe(async (args) => {
@@ -575,6 +597,13 @@ export function registerLibraryTools(server: McpServer, app: App) {
         warnings: [...m.warnings, ...issues],
         title_length: m.title.length,
         description_bytes: Buffer.byteLength(m.description, "utf8"),
+        seo: seoCheck({
+          title: m.title,
+          description: m.description,
+          tags: m.tags,
+          keyword: args.keyword,
+          durationSeconds: args.duration_seconds,
+        }),
       });
     }),
   );

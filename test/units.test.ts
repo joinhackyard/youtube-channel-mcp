@@ -11,7 +11,7 @@ import { applyTemplate, tagsLength, TemplateStore } from "../src/templates.js";
 import { privateLockWarning, type UploadMetadata } from "../src/upload/jobs.js";
 import { isPrivateAddress } from "../src/upload/sources.js";
 import { applyVideoChanges } from "../src/mcp/tools/videos.js";
-import { queryAnalytics } from "../src/mcp/tools/channel.js";
+import { queryAnalytics } from "../src/analytics.js";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

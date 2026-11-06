@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { App } from "../../app.js";
+import { describeAi } from "../../ai/providers.js";
 import { describeChannel } from "../../channels.js";
 import { VERSION } from "../../config.js";
 import { openBrowser } from "../../connect.js";
@@ -36,7 +37,7 @@ export function registerAccountTools(server: McpServer, app: App) {
         channels,
         quota: app.quota.status(),
         confirm_policy: app.cfg.confirmPolicy,
-        transcription_configured: Boolean(app.cfg.transcription.apiKey),
+        ai: describeAi(app.cfg.ai),
         known_limits: [
           lock
             ? `Uploads from this Google Cloud project were observed being locked to private (${lock}). Until the project passes the YouTube API audit, publish manually in YouTube Studio.`

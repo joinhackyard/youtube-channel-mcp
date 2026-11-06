@@ -18,6 +18,7 @@ export interface ChannelRow {
   google_email: string | null;
   uploads_playlist_id: string | null;
   scopes: string | null;
+  client_id: string | null;
   status: "ok" | "needs_reconnect";
   status_detail: string | null;
   is_default: number;
@@ -96,6 +97,17 @@ export class Channels {
   async api(row: ChannelRow): Promise<YouTubeApi> {
     const cached = this.apis.get(row.id);
     if (cached) return cached;
+    if (row.client_id && this.cfg.google.clientId && row.client_id !== this.cfg.google.clientId) {
+      const detail = `Connected with OAuth client ${row.client_id.slice(0, 12)}…, but ${this.cfg.google.clientId.slice(0, 12)}… is configured now.`;
+      this.markNeedsReconnect(row.id, detail);
+      throw new YtError(
+        "auth_expired",
+        `"${row.title}" was connected with a different Google OAuth client.`,
+        {
+          hint: `${detail} Call connect_channel to sign in again with the current client.`,
+        },
+      );
+    }
     const refresh = await this.vault.get(vaultKey(row.id));
     if (!refresh) {
       this.markNeedsReconnect(row.id, "No stored Google token");
@@ -165,20 +177,22 @@ export class Channels {
     if (existing) {
       this.db.run(
         `update channels set title = ?, handle = ?, thumbnail_url = ?, google_email = coalesce(?, google_email),
-           uploads_playlist_id = ?, scopes = ?, status = 'ok', status_detail = null, refreshed_at = ? where id = ?`,
+           uploads_playlist_id = ?, scopes = ?, status = 'ok', status_detail = null, refreshed_at = ?, client_id = ? where id = ?`,
         ...fields,
         Date.now(),
+        this.cfg.google.clientId ?? null,
         rowId,
       );
     } else {
       this.db.run(
         `insert into channels(id, channel_id, title, handle, thumbnail_url, google_email, uploads_playlist_id, scopes,
-           is_default, connected_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           is_default, connected_at, client_id) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         rowId,
         ch.id,
         ...fields,
         hasDefault ? 0 : 1,
         Date.now(),
+        this.cfg.google.clientId ?? null,
       );
     }
     await this.vault.set(vaultKey(rowId), tokens.refresh_token);

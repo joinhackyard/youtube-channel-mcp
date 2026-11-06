@@ -1,7 +1,7 @@
 {
   "name": "@joinhackyard/youtube-channel-mcp",
-  "version": "1.0.1",
-  "description": "MCP server to run your whole YouTube channel from Claude, Hermes, Cursor, Codex and any MCP client: uploads, scheduling, metadata, thumbnails, playlists, captions, comments, channel branding and analytics, on the official YouTube APIs.",
+  "version": "1.1.0",
+  "description": "MCP server to run and grow your whole YouTube channel from Claude, Hermes, Cursor, Codex and any MCP client: uploads, scheduling, A/B tests, analytics, SEO, comments, Shorts, thumbnails and AI providers (Claude, OpenAI, Azure OpenAI, Gemini, OpenRouter, Groq, Ollama), on the official YouTube APIs.",
   "keywords": [
     "mcp",
     "model-context-protocol",
@@ -15,7 +15,14 @@
     "claude",
     "hermes",
     "cursor",
-    "ai-agent"
+    "ai-agent",
+    "ab-testing",
+    "youtube-seo",
+    "youtube-growth",
+    "anthropic",
+    "openai",
+    "azure-openai",
+    "gemini"
   ],
   "license": "MIT",
   "author": "Hackyard (https://hackyard.org)",
@@ -47,9 +54,12 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.6.0",
+    "@google/genai": "^3.0.0",
     "@googleapis/youtube": "^40.0.2",
     "@modelcontextprotocol/sdk": "^1.32.2",
     "google-auth-library": "^11.3.3",
+    "openai": "^7.53.0",
     "zod": "^4.3.6"
   },
   "optionalDependencies": {

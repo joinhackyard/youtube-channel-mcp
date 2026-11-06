@@ -3,7 +3,9 @@ import { z } from "zod";
 import type { App } from "../app.js";
 import { APP, VERSION } from "../config.js";
 import { registerAccountTools } from "./tools/account.js";
+import { registerAiTools } from "./tools/ai.js";
 import { registerChannelTools } from "./tools/channel.js";
+import { registerGrowthTools } from "./tools/growth.js";
 import { registerLibraryTools } from "./tools/library.js";
 import { registerUploadTools } from "./tools/upload.js";
 import { registerVideoTools } from "./tools/videos.js";
@@ -18,6 +20,10 @@ What you can do:
 - Channel: get_channel, update_channel (description, keywords, trailer, translations), set_channel_banner, set_watermark.
 - Community: list_comments (per video or channel-wide, including held-for-review and likely spam), reply_to_comment, moderate_comments, delete_comment.
 - Analytics: get_analytics (overview, daily, top_videos, traffic_sources, search_terms, geography, devices, demographics, retention, custom).
+- Grow: analyze_video (outlier score, hook retention, traffic, search terms, SEO, AI diagnosis), find_outliers, research_topic (breakout videos on a topic), best_publish_time, seo_check, content_ideas.
+- A/B test: create_ab_test rotates title/thumbnail/description variants daily and picks a winner with a significance test (also from upload_video via ab_test); get_ab_test, list_ab_tests, stop_ab_test.
+- Create: generate_metadata, suggest_shorts + create_short (vertical cut), extract_frames, generate_thumbnails, critique_thumbnails, triage_comments, translate_video_metadata.
+- AI providers (Claude, OpenAI, Azure OpenAI, Gemini, OpenRouter, Groq, Ollama): see ai_status. Without one, these tools return the data and a brief so you write the result yourself. They never publish; show drafts to the user.
 - Organise: playlists (list/create/update/delete/add/remove/reorder), captions (list/upload/download/delete, transcribe_video), templates.
 
 Safety: anything public (publishing, scheduling, public replies, channel profile and banner changes) or destructive needs the user's approval. If a tool returns CONFIRMATION REQUIRED, show the summary to the user and only call again with the confirmation_token after they say yes. Never invent approval.
@@ -35,6 +41,8 @@ export function buildServer(app: App): McpServer {
   registerVideoTools(server, app);
   registerLibraryTools(server, app);
   registerChannelTools(server, app);
+  registerAiTools(server, app);
+  registerGrowthTools(server, app);
 
   server.registerPrompt(
     "publish_video",

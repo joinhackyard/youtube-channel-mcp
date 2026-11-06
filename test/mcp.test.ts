@@ -72,6 +72,25 @@ test("exposes the full tool set with annotations", async () => {
     "move_in_playlist",
     "delete_captions",
     "set_video_localizations",
+    "ai_status",
+    "set_ai_models",
+    "analyze_video",
+    "triage_comments",
+    "translate_video_metadata",
+    "suggest_shorts",
+    "create_short",
+    "extract_frames",
+    "generate_thumbnails",
+    "critique_thumbnails",
+    "content_ideas",
+    "create_ab_test",
+    "list_ab_tests",
+    "get_ab_test",
+    "stop_ab_test",
+    "seo_check",
+    "find_outliers",
+    "research_topic",
+    "best_publish_time",
   ])
     assert.ok(names.includes(n), `missing ${n}`);
   assert.equal(tools.find((t) => t.name === "delete_video")?.annotations?.destructiveHint, true);
@@ -80,7 +99,7 @@ test("exposes the full tool set with annotations", async () => {
     tools.find((t) => t.name === "moderate_comments")?.annotations?.destructiveHint,
     true,
   );
-  assert.ok(tools.length >= 46, `expected the full channel tool set, got ${tools.length}`);
+  assert.ok(tools.length >= 65, `expected the full channel tool set, got ${tools.length}`);
   const { prompts } = await client.listPrompts();
   assert.ok(prompts.some((p) => p.name === "publish_video"));
 });

@@ -46,7 +46,24 @@ export interface PostSteps {
   playlists?: string[];
   create_missing_playlists?: boolean;
   captions?: CaptionInput;
+  ab_test?: AbTestSpec;
 }
+
+/** A/B test to start once the upload finishes (see create_ab_test). */
+export interface AbTestSpec {
+  variants: { title?: string; description?: string; thumbnail_path?: string }[];
+  days: number;
+  metric: string;
+  auto_apply_winner: boolean;
+}
+
+export type AbTestStarter = (input: {
+  channelRowId: string;
+  videoId: string;
+  spec: AbTestSpec;
+  publishAt?: string;
+  originalThumbnail?: string;
+}) => Promise<Record<string, unknown>>;
 
 export interface JobRow {
   id: string;
@@ -104,6 +121,8 @@ export class JobManager extends EventEmitter {
   private readonly running = new Map<string, AbortController>();
   private timer?: NodeJS.Timeout;
   private stopped = false;
+  /** Set by the app: creates the A/B test for uploads that asked for one. */
+  abTestStarter?: AbTestStarter;
   private readonly downloadsDir: string;
 
   constructor(
@@ -522,6 +541,24 @@ export class JobManager extends EventEmitter {
         return { added, created: r.created, missing: r.missing };
       });
       await step("captions", post.captions, () => uploadCaptions(api, videoId, post.captions!));
+      const thumbOk =
+        !post.thumbnail_path || (steps.thumbnail as { ok?: boolean } | undefined)?.ok === true;
+      if (post.ab_test && !thumbOk && post.ab_test.variants.some((v) => v.thumbnail_path)) {
+        steps.ab_test = {
+          ok: false,
+          error:
+            "Skipped: the main thumbnail did not go live, so it can't be variant A. Fix it, then use create_ab_test.",
+        };
+      } else
+        await step("ab_test", post.ab_test && this.abTestStarter, () =>
+          this.abTestStarter!({
+            channelRowId: job.channel_row_id,
+            videoId,
+            spec: post.ab_test!,
+            publishAt: meta.publish_at,
+            originalThumbnail: post.thumbnail_path,
+          }),
+        );
       this.assertOwned(job.id, signal);
 
       // 4. Final state, including the "unaudited project forces private" check.

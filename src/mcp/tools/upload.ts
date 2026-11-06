@@ -44,6 +44,12 @@ export const metadataShape = {
     .describe(
       "Altered or synthetic content disclosure: true if realistic content was made or altered with AI.",
     ),
+  has_paid_product_placement: z
+    .boolean()
+    .optional()
+    .describe(
+      "Paid promotion disclosure: true if the video contains paid product placement, sponsorship or endorsement.",
+    ),
   license: z.enum(["youtube", "creativeCommon"]).optional(),
   embeddable: z.boolean().optional(),
   template: z
@@ -127,6 +133,35 @@ export function registerUploadTools(server: McpServer, app: App) {
           .max(110)
           .default(20)
           .describe("Wait this long for the upload before returning the job status."),
+        ab_test: z
+          .object({
+            titles: z
+              .array(z.string().max(100))
+              .max(3)
+              .optional()
+              .describe("Alternative titles (B, C, D) to test against the main title."),
+            thumbnail_paths: z
+              .array(z.string())
+              .max(3)
+              .optional()
+              .describe("Alternative thumbnails to test against thumbnail_path."),
+            days: z.number().int().min(6).max(60).default(14),
+            metric: z
+              .enum([
+                "views",
+                "watch_time",
+                "avg_view_percentage",
+                "avg_view_duration",
+                "subscribers",
+                "engagement",
+              ])
+              .default("views"),
+            auto_apply_winner: z.boolean().default(true),
+          })
+          .optional()
+          .describe(
+            "Start an A/B test the day after the video goes live (needs public, unlisted or publish_at). Variant i pairs titles[i] with thumbnail_paths[i].",
+          ),
         confirmation_token: confirmArg,
       },
       annotations: {
@@ -175,6 +210,48 @@ export function registerUploadTools(server: McpServer, app: App) {
           containsSyntheticMedia: args.contains_synthetic_media,
         },
       };
+      if (args.has_paid_product_placement !== undefined)
+        resource.paidProductPlacementDetails = {
+          hasPaidProductPlacement: args.has_paid_product_placement,
+        };
+      let abTest:
+        | {
+            variants: { title?: string; thumbnail_path?: string }[];
+            days: number;
+            metric: string;
+            auto_apply_winner: boolean;
+          }
+        | undefined;
+      if (args.ab_test) {
+        const n = Math.max(
+          args.ab_test.titles?.length ?? 0,
+          args.ab_test.thumbnail_paths?.length ?? 0,
+        );
+        if (!n)
+          throw new YtError("invalid_request", "ab_test needs titles and/or thumbnail_paths.");
+        if (args.privacy === "private" && !args.publish_at)
+          throw new YtError(
+            "invalid_request",
+            "A/B tests need viewers: use public, unlisted or publish_at.",
+          );
+        if (args.ab_test.thumbnail_paths?.length && !args.thumbnail_path)
+          throw new YtError(
+            "invalid_request",
+            "Testing thumbnails needs the main thumbnail_path as variant A.",
+          );
+        for (const t of args.ab_test.thumbnail_paths ?? []) await inspectThumbnail(t);
+        abTest = {
+          variants: Array.from({ length: n }, (_, i) => ({
+            title: args.ab_test!.titles?.[i],
+            thumbnail_path: args.ab_test!.thumbnail_paths?.[i]
+              ? expandPath(args.ab_test!.thumbnail_paths[i])
+              : undefined,
+          })),
+          days: args.ab_test.days,
+          metric: args.ab_test.metric,
+          auto_apply_winner: args.ab_test.auto_apply_winner,
+        };
+      }
       if (args.recording_date)
         resource.recordingDetails = {
           recordingDate: new Date(args.recording_date).toISOString(),
@@ -189,6 +266,10 @@ export function registerUploadTools(server: McpServer, app: App) {
         meta.template ? `Template: ${meta.template}` : "",
         playlists.length ? `Playlists: ${playlists.join(", ")}` : "",
         args.thumbnail_path ? `Thumbnail: ${expandPath(args.thumbnail_path)}` : "",
+        abTest
+          ? `A/B test: ${abTest.variants.length + 1} versions for ${abTest.days} days by ${abTest.metric}, starting the day after it goes live`
+          : "",
+        args.has_paid_product_placement ? "Paid promotion: disclosed" : "",
         `Made for kids: ${meta.made_for_kids ? "yes" : "no"}${args.notify_subscribers === false ? " · subscribers not notified" : ""}`,
       ]
         .filter(Boolean)
@@ -228,6 +309,7 @@ export function registerUploadTools(server: McpServer, app: App) {
                 language: args.captions_language ?? meta.default_audio_language ?? "en",
               }
             : undefined,
+          ab_test: abTest,
         },
       });
       const after = await app.jobs.waitFor(
