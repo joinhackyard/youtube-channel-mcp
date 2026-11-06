@@ -58,7 +58,7 @@ test("exposes the full tool set with annotations", async () => {
     "quota_status",
     "transcribe_video",
     "resume_upload",
-    "cancel_upload",
+    "cancel_upload", "get_channel", "update_channel", "set_channel_banner", "set_watermark", "list_comments", "reply_to_comment", "moderate_comments", "delete_comment", "get_analytics", "update_playlist", "delete_playlist", "move_in_playlist", "delete_captions", "set_video_localizations",
   ])
     assert.ok(names.includes(n), `missing ${n}`);
   assert.equal(
@@ -69,6 +69,8 @@ test("exposes the full tool set with annotations", async () => {
     tools.find((t) => t.name === "list_my_videos")?.annotations?.readOnlyHint,
     true,
   );
+  assert.equal(tools.find((t) => t.name === "moderate_comments")?.annotations?.destructiveHint, true);
+  assert.ok(tools.length >= 46, `expected the full channel tool set, got ${tools.length}`);
   const { prompts } = await client.listPrompts();
   assert.ok(prompts.some((p) => p.name === "publish_video"));
 });

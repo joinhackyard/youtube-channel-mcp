@@ -27,7 +27,7 @@ import {
   resolvePlaylists,
   uploadCaptions,
 } from "../../videoOps.js";
-import { channelArg, ok, safe } from "../helpers.js";
+import { channelArg, confirmArg, confirmGate, ok, safe } from "../helpers.js";
 import { metadataShape } from "./upload.js";
 
 export function registerLibraryTools(server: McpServer, app: App) {
@@ -181,6 +181,93 @@ export function registerLibraryTools(server: McpServer, app: App) {
   );
 
   server.registerTool(
+    "update_playlist",
+    {
+      title: "Edit a playlist",
+      description: "Rename a playlist, change its description or privacy. Making it public or unlisted needs the user’s confirmation.",
+      inputSchema: {
+        playlist: z.string().describe("Playlist id or exact title."),
+        title: z.string().min(1).max(150).optional(),
+        description: z.string().max(5000).optional(),
+        privacy: z.enum(PRIVACY).optional(),
+        channel: channelArg,
+        confirmation_token: confirmArg,
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    },
+    safe(async (args) => {
+      const a = await api(args.channel);
+      const all = await listPlaylists(a);
+      const p = all.find((x) => x.id === args.playlist || x.snippet?.title?.toLowerCase() === args.playlist.toLowerCase());
+      if (!p?.id) throw new YtError("not_found", `No playlist "${args.playlist}".`);
+      if (args.privacy && args.privacy !== "private" && args.privacy !== p.status?.privacyStatus) {
+        const gate = await confirmGate(app, server, "update_playlist", args, `Make playlist "${p.snippet?.title}" ${args.privacy.toUpperCase()}.`, { publicFacing: true });
+        if (gate) return gate;
+      }
+      const upd = await a.call(
+        COST.playlistsUpdate,
+        "playlists.update",
+        () =>
+          a.yt.playlists.update({
+            part: ["snippet", "status"],
+            requestBody: {
+              id: p.id,
+              snippet: { title: args.title ?? p.snippet?.title, description: args.description ?? p.snippet?.description, defaultLanguage: p.snippet?.defaultLanguage },
+              status: { privacyStatus: args.privacy ?? p.status?.privacyStatus },
+            },
+          }),
+        false,
+      );
+      return ok({ id: upd.id, title: upd.snippet?.title, privacy: upd.status?.privacyStatus });
+    }),
+  );
+
+  server.registerTool(
+    "delete_playlist",
+    {
+      title: "Delete a playlist",
+      description: "Delete a playlist (the videos in it are not deleted). Needs the user’s confirmation.",
+      inputSchema: { playlist: z.string().describe("Playlist id or exact title."), channel: channelArg, confirmation_token: confirmArg },
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
+    },
+    safe(async (args) => {
+      const a = await api(args.channel);
+      const r = await resolvePlaylists(a, [args.playlist], false);
+      if (!r.ids.length) throw new YtError("not_found", `No playlist "${args.playlist}".`);
+      const gate = await confirmGate(app, server, "delete_playlist", args, `Delete playlist "${args.playlist}" (${r.ids[0]}). Videos stay on the channel.`, { publicFacing: false, destructive: true });
+      if (gate) return gate;
+      await a.call(COST.playlistsDelete, "playlists.delete", () => a.yt.playlists.delete({ id: r.ids[0] }), false);
+      app.db.audit("playlist.deleted", { playlist: r.ids[0] });
+      return ok({ deleted: r.ids[0] });
+    }),
+  );
+
+  server.registerTool(
+    "move_in_playlist",
+    {
+      title: "Reorder a playlist",
+      description: "Move a video to a new position in a playlist (0 = first). Works for playlists sorted manually.",
+      inputSchema: { playlist: z.string(), video_id: z.string(), position: z.number().int().min(0), channel: channelArg },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    },
+    safe(async ({ playlist, video_id, position, channel }) => {
+      const a = await api(channel);
+      const r = await resolvePlaylists(a, [playlist], false);
+      if (!r.ids.length) throw new YtError("not_found", `No playlist "${playlist}".`);
+      const items = await a.call(COST.list, "playlistItems.list", () => a.yt.playlistItems.list({ part: ["id", "snippet"], playlistId: r.ids[0], videoId: video_id }));
+      const item = items.items?.[0];
+      if (!item?.id) throw new YtError("not_found", "That video is not in this playlist.");
+      await a.call(
+        COST.playlistItemsUpdate,
+        "playlistItems.update",
+        () => a.yt.playlistItems.update({ part: ["snippet"], requestBody: { id: item.id, snippet: { playlistId: r.ids[0], resourceId: item.snippet?.resourceId, position } } }),
+        false,
+      );
+      return ok({ playlist_id: r.ids[0], video_id, position });
+    }),
+  );
+
+  server.registerTool(
     "list_playlist_items",
     {
       title: "List videos in a playlist",
@@ -290,6 +377,23 @@ export function registerLibraryTools(server: McpServer, app: App) {
           `Captions file not found: ${expandPath(c.file_path)}`,
         );
       return ok(await uploadCaptions(await api(channel), video_id, c));
+    }),
+  );
+
+  server.registerTool(
+    "delete_captions",
+    {
+      title: "Delete a caption track",
+      description: "Delete an uploaded caption track (see list_captions for ids). Needs the user’s confirmation.",
+      inputSchema: { caption_id: z.string(), channel: channelArg, confirmation_token: confirmArg },
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
+    },
+    safe(async (args) => {
+      const gate = await confirmGate(app, server, "delete_captions", args, `Delete caption track ${args.caption_id}.`, { publicFacing: false, destructive: true });
+      if (gate) return gate;
+      const a = await api(args.channel);
+      await a.call(COST.captionsDelete, "captions.delete", () => a.yt.captions.delete({ id: args.caption_id }), false);
+      return ok({ deleted: args.caption_id });
     }),
   );
 

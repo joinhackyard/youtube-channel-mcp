@@ -19,7 +19,7 @@ const dim = (s: string) => (process.stdout.isTTY ? `\x1b[2m${s}\x1b[0m` : s);
 const say = (s = "") => process.stdout.write(s + "\n");
 
 const HELP = `${bold(`${APP} ${VERSION}`)}
-Publish to YouTube from Claude, Hermes, Cursor, Codex and any MCP client.
+Run your YouTube channel from Claude, Hermes, Cursor, Codex and any MCP client.
 
 ${bold("Get started")}
   npx ${APP} setup            Guided setup: Google credentials, connect a channel, add to your AI apps
@@ -106,6 +106,10 @@ const GOOGLE_STEPS = [
   [
     "Enable the YouTube Data API v3 for it",
     "https://console.cloud.google.com/apis/library/youtube.googleapis.com",
+  ],
+  [
+    "Enable the YouTube Analytics API too (for channel stats)",
+    "https://console.cloud.google.com/apis/library/youtubeanalytics.googleapis.com",
   ],
   [
     'Set up the OAuth consent screen: Get started → app name + your email → Audience: External → finish. Under Audience, add your Google account as a test user (or click "Publish app" so sign-ins do not expire every 7 days; Google then shows an "unverified app" notice you can click through)',
@@ -250,7 +254,7 @@ async function setup() {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   try {
     say(
-      bold(`\nYouTube Publisher MCP · setup`) +
+      bold(`\nYouTube Channel MCP · setup`) +
         dim(`  (data: ${app.cfg.home})`),
     );
     await setupGoogle(app, rl);
@@ -296,7 +300,7 @@ async function setup() {
     say(dim("\nOther clients:\n") + dim(manualSnippets(launchSpec())));
     say(
       bold("\nDone.") +
-        ' Restart your AI app and ask: "Check my YouTube connection" or "Upload ~/Videos/clip.mp4 as a private video".\n',
+        ' Restart your AI app and ask: "Check my YouTube connection" or "How did my channel do this month?".\n',
     );
   } finally {
     rl.close();

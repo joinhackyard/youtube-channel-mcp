@@ -18,6 +18,13 @@ export const COST = {
   captionsDownload: 200,
   captionsDelete: 50,
   search: 100,
+  channelsUpdate: 50,
+  channelBannersInsert: 50,
+  watermarks: 50,
+  commentsInsert: 50,
+  commentsModerate: 50,
+  playlistsDelete: 50,
+  playlistItemsUpdate: 50,
 } as const;
 
 const PT = "America/Los_Angeles";

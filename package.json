@@ -1,13 +1,17 @@
 {
-  "name": "youtube-publisher-mcp",
+  "name": "youtube-channel-mcp",
   "version": "1.0.0",
-  "description": "MCP server for publishing to YouTube from Claude, Hermes, Cursor, Codex and any MCP client: resumable uploads, scheduling, thumbnails, playlists, captions and metadata, on the official YouTube Data API.",
+  "description": "MCP server to run your whole YouTube channel from Claude, Hermes, Cursor, Codex and any MCP client: uploads, scheduling, metadata, thumbnails, playlists, captions, comments, channel branding and analytics, on the official YouTube APIs.",
   "keywords": [
     "mcp",
     "model-context-protocol",
+    "mcp-server",
     "youtube",
-    "youtube-data-api",
+    "youtube-api",
+    "youtube-analytics",
+    "youtube-channel",
     "youtube-upload",
+    "youtube-comments",
     "claude",
     "hermes",
     "cursor",
@@ -17,13 +21,13 @@
   "author": "Hackyard (https://hackyard.org)",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/shyamolkonwar/youtube-publisher-mcp.git"
+    "url": "git+https://github.com/shyamolkonwar/youtube-channel-mcp.git"
   },
-  "homepage": "https://github.com/shyamolkonwar/youtube-publisher-mcp#readme",
-  "bugs": "https://github.com/shyamolkonwar/youtube-publisher-mcp/issues",
+  "homepage": "https://github.com/shyamolkonwar/youtube-channel-mcp#readme",
+  "bugs": "https://github.com/shyamolkonwar/youtube-channel-mcp/issues",
   "type": "module",
   "bin": {
-    "youtube-publisher-mcp": "dist/src/cli.js"
+    "youtube-channel-mcp": "dist/src/cli.js"
   },
   "files": [
     "dist/src",

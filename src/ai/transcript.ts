@@ -128,7 +128,7 @@ export async function transcribeFile(
   const { apiKey, baseUrl, model } = cfg.transcription;
   if (!apiKey) {
     throw new YtError("not_configured", "Transcription is not configured.", {
-      hint: "Set TRANSCRIBE_API_KEY (or OPENAI_API_KEY), optionally TRANSCRIBE_BASE_URL and TRANSCRIBE_MODEL, or run `npx youtube-publisher-mcp setup`. Or pass an existing transcript or .srt instead.",
+      hint: "Set TRANSCRIBE_API_KEY (or OPENAI_API_KEY), optionally TRANSCRIBE_BASE_URL and TRANSCRIBE_MODEL, or run `npx youtube-channel-mcp setup`. Or pass an existing transcript or .srt instead.",
     });
   }
   if (!(await hasFfmpeg())) {

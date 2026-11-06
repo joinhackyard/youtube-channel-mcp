@@ -466,6 +466,37 @@ export function registerVideoTools(server: McpServer, app: App) {
   );
 
   server.registerTool(
+    "set_video_localizations",
+    {
+      title: "Translate title and description",
+      description:
+        'Add or update the title and description shown to viewers in other languages, e.g. {"hi": {"title": "...", "description": "..."}}. Merged with existing translations. The video needs a default_language set (update_video).',
+      inputSchema: {
+        video_id: z.string(),
+        localizations: z.record(z.string(), z.object({ title: z.string().max(100), description: z.string().max(5000).optional() })),
+        remove_languages: z.array(z.string()).optional(),
+        channel: channelArg,
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    },
+    safe(async (args) => {
+      const a = await api(args.channel);
+      const cur = await a.getVideo(args.video_id, ["snippet", "localizations"]);
+      if (!cur.snippet?.defaultLanguage) {
+        throw new YtError("invalid_request", "Set the video’s default_language first (update_video), then add translations.");
+      }
+      const merged: Record<string, youtube_v3.Schema$VideoLocalization> = { ...(cur.localizations ?? {}) };
+      for (const [lang, l] of Object.entries(args.localizations)) {
+        validateText(l.title, l.description ?? "");
+        merged[lang] = { ...merged[lang], ...l };
+      }
+      for (const lang of args.remove_languages ?? []) delete merged[lang];
+      await a.call(COST.videosUpdate, "videos.update", () => a.yt.videos.update({ part: ["localizations"], requestBody: { id: args.video_id, localizations: merged } }), false);
+      return ok({ video_id: args.video_id, languages: Object.keys(merged) });
+    }),
+  );
+
+  server.registerTool(
     "list_categories",
     {
       title: "List video categories",

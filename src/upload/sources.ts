@@ -197,7 +197,7 @@ function request(target: { url: URL; address: string; family: number }, signal?:
     const req = mod.get(
       target.url,
       {
-        headers: { "User-Agent": "youtube-publisher-mcp" },
+        headers: { "User-Agent": "youtube-channel-mcp" },
         signal,
         // Pin the connection to the address that passed the private-network check.
         lookup: ((_h: string, opts: { all?: boolean }, cb: (...a: unknown[]) => void) =>

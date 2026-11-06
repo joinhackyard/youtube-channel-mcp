@@ -15,6 +15,7 @@ import { applyTemplate, tagsLength, TemplateStore } from "../src/templates.js";
 import { privateLockWarning, type UploadMetadata } from "../src/upload/jobs.js";
 import { isPrivateAddress } from "../src/upload/sources.js";
 import { applyVideoChanges } from "../src/mcp/tools/videos.js";
+import { queryAnalytics } from "../src/mcp/tools/channel.js";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -31,27 +32,27 @@ test("Hermes YAML: adds a youtube server under an existing mcp_servers block, ke
   const after = upsertHermesYaml(before, spec);
   assert.match(
     after,
-    /mcp_servers:\n  youtube-publisher:\n    command: "\/usr\/local\/bin\/node"/,
+    /mcp_servers:\n  youtube-channel:\n    command: "\/usr\/local\/bin\/node"/,
   );
   assert.match(after, /  firecrawl:\n    command: npx/);
   assert.match(after, /other: 1\n$/);
   // Idempotent: installing twice leaves one block.
   const twice = upsertHermesYaml(after, spec);
-  assert.equal(twice.match(/  youtube-publisher:/g)?.length, 1);
+  assert.equal(twice.match(/  youtube-channel:/g)?.length, 1);
   // Removal restores the original servers.
   const removed = upsertHermesYaml(twice, null);
-  assert.ok(!removed.includes("youtube-publisher:"));
+  assert.ok(!removed.includes("youtube-channel:"));
   assert.match(removed, /firecrawl:/);
 });
 
 test("Hermes YAML: creates mcp_servers when missing or inline-empty", () => {
   assert.match(
     upsertHermesYaml("model: x\n", spec),
-    /model: x\n\nmcp_servers:\n  youtube-publisher:/,
+    /model: x\n\nmcp_servers:\n  youtube-channel:/,
   );
   assert.match(
     upsertHermesYaml("mcp_servers: {}\n", spec),
-    /^mcp_servers:\n  youtube-publisher:/,
+    /^mcp_servers:\n  youtube-channel:/,
   );
 });
 
@@ -60,11 +61,11 @@ test("Codex TOML: upsert and remove the table", () => {
   const added = upsertCodexToml(base, spec);
   assert.match(
     added,
-    /\[mcp_servers\.youtube-publisher\]\ncommand = "\/usr\/local\/bin\/node"/,
+    /\[mcp_servers\.youtube-channel\]\ncommand = "\/usr\/local\/bin\/node"/,
   );
-  assert.match(added, /\[mcp_servers\.youtube-publisher\.env\]\nPATH = /);
+  assert.match(added, /\[mcp_servers\.youtube-channel\.env\]\nPATH = /);
   const again = upsertCodexToml(added, spec);
-  assert.equal(again.match(/\[mcp_servers\.youtube-publisher\]/g)?.length, 1);
+  assert.equal(again.match(/\[mcp_servers\.youtube-channel\]/g)?.length, 1);
   const removed = upsertCodexToml(again, null);
   assert.ok(!removed.includes("youtube"));
   assert.match(removed, /\[mcp_servers\.other\]/);
@@ -213,15 +214,15 @@ test("crypto helpers", () => {
 
 test("config writers: tolerant matching and clean removal", () => {
   // Quoted / commented TOML headers are replaced, not duplicated.
-  const toml = `[mcp_servers."youtube-publisher"]  # mine\ncommand = "old"\n\n[mcp_servers.youtube-publisher.env]\nX = "1"\n`;
+  const toml = `[mcp_servers."youtube-channel"]  # mine\ncommand = "old"\n\n[mcp_servers.youtube-channel.env]\nX = "1"\n`;
   const t = upsertCodexToml(toml, spec);
-  assert.equal(t.match(/youtube-publisher\]/g)?.length, 1);
+  assert.equal(t.match(/youtube-channel\]/g)?.length, 1);
   assert.ok(!t.includes('"old"'));
   // Inline YAML entry and `mcp_servers: ~` are handled.
-  const inline = upsertHermesYaml('mcp_servers:\n  youtube-publisher: {command: old}\n  other:\n    command: x\n', spec);
-  assert.equal(inline.match(/youtube-publisher:/g)?.length, 1);
+  const inline = upsertHermesYaml('mcp_servers:\n  youtube-channel: {command: old}\n  other:\n    command: x\n', spec);
+  assert.equal(inline.match(/youtube-channel:/g)?.length, 1);
   assert.ok(!inline.includes("command: old"));
-  assert.match(upsertHermesYaml("mcp_servers: ~\n", spec), /^mcp_servers:\n  youtube-publisher:/);
+  assert.match(upsertHermesYaml("mcp_servers: ~\n", spec), /^mcp_servers:\n  youtube-channel:/);
   // Removing the only server leaves a valid empty mapping, not null.
   assert.equal(upsertHermesYaml(upsertHermesYaml("a: 1\n", spec), null), "a: 1\n\nmcp_servers: {}\n");
   // Another server called "youtube" is never touched.
@@ -260,4 +261,19 @@ test("video updates merge into the current snippet and status", async () => {
   assert.equal(sent!.requestBody.status.embeddable, false);
   await applyVideoChanges(api as never, "v1", { privacy: "public" });
   assert.equal(sent!.requestBody.status.publishAt, undefined, "publishing now clears the schedule");
+});
+
+test("analytics rows are mapped to named columns", async () => {
+  let params: Record<string, unknown> = {};
+  const api = {
+    auth: {
+      request: async (o: { params: Record<string, unknown> }) => {
+        params = o.params;
+        return { data: { columnHeaders: [{ name: "day" }, { name: "views" }], rows: [["2026-11-01", 120], ["2026-11-02", 98]] } };
+      },
+    },
+  };
+  const rows = await queryAnalytics(api as never, { startDate: "2026-11-01", endDate: "2026-11-02", metrics: "views", dimensions: "day" });
+  assert.deepEqual(rows, [{ day: "2026-11-01", views: 120 }, { day: "2026-11-02", views: 98 }]);
+  assert.equal(params.ids, "channel==MINE");
 });

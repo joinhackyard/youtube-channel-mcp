@@ -6,12 +6,15 @@ import {
 import type { Config } from "../config.js";
 import { YtError } from "../errors.js";
 
-/** youtube.upload: uploads. youtube: thumbnails, playlists, metadata. youtube.force-ssl: captions and deletes. */
-export const YOUTUBE_SCOPES = [
+export const ANALYTICS_SCOPE = "https://www.googleapis.com/auth/yt-analytics.readonly";
+/** Needed for everything except analytics. */
+export const REQUIRED_SCOPES = [
   "https://www.googleapis.com/auth/youtube.upload",
   "https://www.googleapis.com/auth/youtube",
   "https://www.googleapis.com/auth/youtube.force-ssl",
 ];
+/** youtube.upload: uploads. youtube: channel, playlists, thumbnails, metadata. force-ssl: comments, captions, deletes. yt-analytics: reports. */
+export const YOUTUBE_SCOPES = [...REQUIRED_SCOPES, ANALYTICS_SCOPE];
 export const IDENTITY_SCOPES = ["openid", "email", "profile"];
 
 export function googleClient(cfg: Config, redirectUri?: string): OAuth2Client {
@@ -21,7 +24,7 @@ export function googleClient(cfg: Config, redirectUri?: string): OAuth2Client {
       "not_configured",
       "Google OAuth client is not configured.",
       {
-        hint: "Run `npx youtube-publisher-mcp setup` in a terminal (it walks you through creating a free Desktop-app OAuth client in Google Cloud), or set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.",
+        hint: "Run `npx youtube-channel-mcp setup` in a terminal (it walks you through creating a free Desktop-app OAuth client in Google Cloud), or set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.",
       },
     );
   }
@@ -92,5 +95,5 @@ export function grantedScopes(tokens: Credentials): string[] {
 }
 
 export function missingYoutubeScopes(scopes: string[]): string[] {
-  return YOUTUBE_SCOPES.filter((s) => !scopes.includes(s));
+  return REQUIRED_SCOPES.filter((s) => !scopes.includes(s));
 }

@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 import { APP } from "./config.js";
 
 /** Namespaced so it never clobbers another "youtube" MCP server the user already has. */
-export const SERVER_NAME = "youtube-publisher";
+export const SERVER_NAME = "youtube-channel";
 
 export interface LaunchSpec {
   command: string;
@@ -22,7 +22,7 @@ export interface LaunchSpec {
 }
 
 /**
- * How MCP clients should start the server. Running from an npx cache → pin `npx -y youtube-publisher-mcp`;
+ * How MCP clients should start the server. Running from an npx cache → pin `npx -y youtube-channel-mcp`;
  * running from a global install or a git checkout → `node /abs/path/cli.js` (fast, works offline).
  * GUI apps often start with a minimal PATH, so node's folder is put on PATH explicitly.
  */
@@ -203,7 +203,7 @@ const claudeCode: ClientTarget = {
 /** Replace or append a `[mcp_servers.youtube]` table in Codex's config.toml. */
 export function upsertCodexToml(toml: string, spec: LaunchSpec | null): string {
   const header = `[mcp_servers.${SERVER_NAME}]`;
-  // Matches [mcp_servers.youtube-publisher], quoted keys, extra spaces, trailing comments, and its sub-tables.
+  // Matches [mcp_servers.youtube-channel], quoted keys, extra spaces, trailing comments, and its sub-tables.
   const ownHeader = new RegExp(`^\\[\\s*mcp_servers\\.(["']?)${SERVER_NAME}\\1(\\.[\\w"'.-]+)?\\s*\\](\\s*#.*)?$`);
   const lines = toml.split("\n");
   const out: string[] = [];
