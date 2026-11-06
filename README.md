@@ -188,6 +188,8 @@ npm install && npm test
 node dist/src/cli.js setup     # or: node dist/src/cli.js install --node
 ```
 
+Releases are published from GitHub Actions with npm trusted publishing (no tokens): bump `version` in `package.json`, commit, then `git tag vX.Y.Z && git push --tags`.
+
 Issues and pull requests are welcome.
 
 ## License
