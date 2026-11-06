@@ -2,6 +2,8 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 export const APP = "youtube-channel-mcp";
+/** npm package name (published under the joinhackyard organisation). */
+export const PACKAGE = "@joinhackyard/youtube-channel-mcp";
 export const VERSION = "1.0.0";
 
 export type ConfirmPolicy = "public" | "always" | "never";

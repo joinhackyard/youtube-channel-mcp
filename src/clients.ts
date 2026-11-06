@@ -10,7 +10,7 @@ import {
 import { homedir } from "node:os";
 import { delimiter, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { APP } from "./config.js";
+import { APP, PACKAGE } from "./config.js";
 
 /** Namespaced so it never clobbers another "youtube" MCP server the user already has. */
 export const SERVER_NAME = "youtube-channel";
@@ -44,7 +44,7 @@ export function launchSpec(mode: "auto" | "npx" | "node" = "auto"): LaunchSpec {
     const npx = join(nodeBin, isWin ? "npx.cmd" : "npx");
     return {
       command: existsSync(npx) ? npx : "npx",
-      args: ["-y", `${APP}@latest`],
+      args: ["-y", `${PACKAGE}@latest`],
       env,
     };
   }

@@ -25,7 +25,7 @@ export function registerAccountTools(server: McpServer, app: App) {
       const next: string[] = [];
       if (!configured)
         next.push(
-          "Google OAuth is not set up. Ask the user to run `npx youtube-channel-mcp setup` in a terminal.",
+          "Google OAuth is not set up. Ask the user to run `npx @joinhackyard/youtube-channel-mcp setup` in a terminal.",
         );
       else if (!channels.length)
         next.push("No channel connected. Call connect_channel.");

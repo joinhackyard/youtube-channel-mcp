@@ -1,5 +1,5 @@
 {
-  "name": "youtube-channel-mcp",
+  "name": "@joinhackyard/youtube-channel-mcp",
   "version": "1.0.0",
   "description": "MCP server to run your whole YouTube channel from Claude, Hermes, Cursor, Codex and any MCP client: uploads, scheduling, metadata, thumbnails, playlists, captions, comments, channel branding and analytics, on the official YouTube APIs.",
   "keywords": [
@@ -21,10 +21,10 @@
   "author": "Hackyard (https://hackyard.org)",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/shyamolkonwar/youtube-channel-mcp.git"
+    "url": "git+https://github.com/joinhackyard/youtube-channel-mcp.git"
   },
-  "homepage": "https://github.com/shyamolkonwar/youtube-channel-mcp#readme",
-  "bugs": "https://github.com/shyamolkonwar/youtube-channel-mcp/issues",
+  "homepage": "https://github.com/joinhackyard/youtube-channel-mcp#readme",
+  "bugs": "https://github.com/joinhackyard/youtube-channel-mcp/issues",
   "type": "module",
   "bin": {
     "youtube-channel-mcp": "dist/src/cli.js"
@@ -56,5 +56,8 @@
   "devDependencies": {
     "@types/node": "^22.19.0",
     "typescript": "^5.9.3"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

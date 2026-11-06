@@ -7,7 +7,7 @@ import { hasFfmpeg } from "./ai/transcript.js";
 import { createApp, type App } from "./app.js";
 import { describeChannel } from "./channels.js";
 import { CLIENTS, launchSpec, manualSnippets } from "./clients.js";
-import { APP, SECRET, VERSION } from "./config.js";
+import { APP, PACKAGE, SECRET, VERSION } from "./config.js";
 import { openBrowser } from "./connect.js";
 import { YtError } from "./errors.js";
 import { log } from "./log.js";
@@ -22,7 +22,7 @@ const HELP = `${bold(`${APP} ${VERSION}`)}
 Run your YouTube channel from Claude, Hermes, Cursor, Codex and any MCP client.
 
 ${bold("Get started")}
-  npx ${APP} setup            Guided setup: Google credentials, connect a channel, add to your AI apps
+  npx ${PACKAGE} setup            Guided setup: Google credentials, connect a channel, add to your AI apps
 
 ${bold("Commands")}
   setup                        Run the guided setup (safe to re-run)
@@ -35,10 +35,10 @@ ${bold("Commands")}
   serve                        Run the MCP server over stdio (what AI apps start)
 
 ${bold("Options for install")}
-  --npx                        Launch with "npx -y ${APP}@latest" (always latest)
+  --npx                        Launch with "npx -y ${PACKAGE}@latest" (always latest)
   --node                       Launch this installed copy directly with node
 
-Docs: https://github.com/shyamolkonwar/${APP}#readme`;
+Docs: https://github.com/joinhackyard/${APP}#readme`;
 
 async function ask(
   rl: ReturnType<typeof createInterface>,
@@ -356,13 +356,13 @@ async function doctor() {
   check(
     Boolean(app.cfg.google.clientId && app.cfg.google.clientSecret),
     "Google OAuth client",
-    `Run: npx ${APP} setup`,
+    `Run: npx ${PACKAGE} setup`,
   );
   const chans = app.channels.list();
   check(
     chans.length > 0,
     `${chans.length} channel(s) connected`,
-    `Run: npx ${APP} connect`,
+    `Run: npx ${PACKAGE} connect`,
   );
   for (const c of chans) {
     try {
@@ -372,7 +372,7 @@ async function doctor() {
       check(
         false,
         `  ${c.title}: ${(e as Error).message}`,
-        `Run: npx ${APP} connect`,
+        `Run: npx ${PACKAGE} connect`,
       );
     }
   }

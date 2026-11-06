@@ -24,7 +24,7 @@ export function googleClient(cfg: Config, redirectUri?: string): OAuth2Client {
       "not_configured",
       "Google OAuth client is not configured.",
       {
-        hint: "Run `npx youtube-channel-mcp setup` in a terminal (it walks you through creating a free Desktop-app OAuth client in Google Cloud), or set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.",
+        hint: "Run `npx @joinhackyard/youtube-channel-mcp setup` in a terminal (it walks you through creating a free Desktop-app OAuth client in Google Cloud), or set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.",
       },
     );
   }

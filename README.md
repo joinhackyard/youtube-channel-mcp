@@ -9,7 +9,7 @@ Run your whole YouTube channel from Claude, Hermes, Cursor, Codex, Windsurf or a
 It runs on your own computer, talks only to the **official YouTube Data API v3 and YouTube Analytics API**, and keeps your Google sign-in in your **OS keychain**. No browser automation, no cookies, no third-party server.
 
 ```bash
-npx youtube-channel-mcp setup
+npx @joinhackyard/youtube-channel-mcp setup
 ```
 
 Setup takes about five minutes: it walks you through creating your Google credentials, connects your channel, and adds itself to the AI apps it finds on your machine.
@@ -34,7 +34,7 @@ Setup takes about five minutes: it walks you through creating your Google creden
 Requirements: **Node.js 22.13+**. Optional: **ffmpeg**, only for transcription.
 
 ```bash
-npx youtube-channel-mcp setup
+npx @joinhackyard/youtube-channel-mcp setup
 ```
 
 Setup does four things:
@@ -50,16 +50,16 @@ Setup does four things:
 3. **Transcription** (optional).
 4. **Add to your AI apps.** It detects and configures **Claude Desktop, Claude Code, Cursor, Windsurf, Codex and Hermes Agent**. Your original config is kept as `*.before-youtube-channel-mcp.bak`, and an existing server named `youtube` is never touched. Restart the app afterwards.
 
-Prefer a global install? `npm i -g youtube-channel-mcp && youtube-channel-mcp setup`.
+Prefer a global install? `npm i -g @joinhackyard/youtube-channel-mcp && youtube-channel-mcp setup`.
 
 ### Manual configuration
 
-`npx youtube-channel-mcp config` prints snippets for your machine. The general shape:
+`npx @joinhackyard/youtube-channel-mcp config` prints snippets for your machine. The general shape:
 
 ```json
 {
   "mcpServers": {
-    "youtube-channel": { "command": "npx", "args": ["-y", "youtube-channel-mcp@latest"] }
+    "youtube-channel": { "command": "npx", "args": ["-y", "@joinhackyard/youtube-channel-mcp@latest"] }
   }
 }
 ```
@@ -70,11 +70,11 @@ Hermes Agent (`~/.hermes/config.yaml`), where tools appear as `mcp_youtube_chann
 mcp_servers:
   youtube-channel:
     command: "npx"
-    args: ["-y", "youtube-channel-mcp@latest"]
+    args: ["-y", "@joinhackyard/youtube-channel-mcp@latest"]
     timeout: 180
 ```
 
-Claude Code: `claude mcp add youtube-channel --scope user -- npx -y youtube-channel-mcp@latest`
+Claude Code: `claude mcp add youtube-channel --scope user -- npx -y @joinhackyard/youtube-channel-mcp@latest`
 
 ## Try it
 
@@ -183,7 +183,7 @@ youtube-channel-mcp config             print config snippets
 ## Develop
 
 ```bash
-git clone https://github.com/shyamolkonwar/youtube-channel-mcp && cd youtube-channel-mcp
+git clone https://github.com/joinhackyard/youtube-channel-mcp && cd youtube-channel-mcp
 npm install && npm test
 node dist/src/cli.js setup     # or: node dist/src/cli.js install --node
 ```
