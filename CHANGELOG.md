@@ -4,6 +4,9 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Fixed
+- Load the Gemini SDK only when using Gemini, so a damaged SDK installation no longer blocks channel sign-in, CLI startup or other AI providers.
+
 ## [1.1.0] - 2026-11-06
 
 ### Added

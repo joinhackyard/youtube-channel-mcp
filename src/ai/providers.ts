@@ -2,7 +2,6 @@ import { readFile } from "node:fs/promises";
 import { basename } from "node:path";
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
-import { GoogleGenAI } from "@google/genai";
 import OpenAI, { AzureOpenAI, toFile } from "openai";
 import { zodResponseFormat } from "openai/helpers/zod";
 import { z } from "zod";
@@ -357,7 +356,9 @@ function openaiClient(ai: AiSettings, id: AiProviderId, deployment?: string): Op
   );
 }
 
-function geminiClient(ai: AiSettings) {
+async function geminiClient(ai: AiSettings) {
+  // Gemini is optional: a damaged SDK install must not block YouTube sign-in or other providers.
+  const { GoogleGenAI } = await import("@google/genai");
   const p = ai.providers.gemini!;
   return cached(`gemini:${p.apiKey}`, () => new GoogleGenAI({ apiKey: p.apiKey }));
 }
@@ -447,7 +448,7 @@ export async function generateJson<T>(
     }
 
     if (info.kind === "gemini") {
-      const g = geminiClient(ai);
+      const g = await geminiClient(ai);
       const parts = [
         ...(req.images ?? []).map((im) => ({ inlineData: { mimeType: im.mime, data: im.data } })),
         { text: req.prompt },
@@ -556,7 +557,7 @@ export async function generateImage(
   const { provider, model } = target;
   try {
     if (PROVIDERS[provider].kind === "gemini") {
-      const g = geminiClient(ai);
+      const g = await geminiClient(ai);
       const res = await g.models.generateContent({
         model,
         contents: [
@@ -637,7 +638,7 @@ export async function transcribeAudio(
   try {
     const audio = await readFile(path);
     if (PROVIDERS[provider].kind === "gemini") {
-      const g = geminiClient(ai);
+      const g = await geminiClient(ai);
       const res = await g.models.generateContent({
         model,
         contents: [
@@ -694,7 +695,8 @@ export async function listModels(ai: AiSettings, id: AiProviderId): Promise<stri
     }
     if (PROVIDERS[id].kind === "gemini") {
       const out: string[] = [];
-      const pager = await geminiClient(ai).models.list();
+      const g = await geminiClient(ai);
+      const pager = await g.models.list();
       for await (const m of pager) if (m.name) out.push(m.name.replace(/^models\//, ""));
       return out;
     }
