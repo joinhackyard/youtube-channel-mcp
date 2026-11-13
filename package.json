@@ -54,12 +54,12 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^1.6.0",
+    "@anthropic-ai/sdk": "^1.7.0",
     "@google/genai": "^3.0.0",
     "@googleapis/youtube": "^40.0.2",
     "@modelcontextprotocol/sdk": "^1.32.2",
-    "google-auth-library": "^11.3.3",
-    "openai": "^7.53.0",
+    "google-auth-library": "^11.3.4",
+    "openai": "^7.55.0",
     "zod": "^4.3.6"
   },
   "optionalDependencies": {
